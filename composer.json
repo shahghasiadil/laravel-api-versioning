@@ -1,0 +1,52 @@
+{
+    "name": "shahghasiadil/laravel-api-versioning",
+    "description": "Attribute-based API versioning for Laravel - inspired by ASP.NET Core API versioning",
+    "keywords": ["laravel", "api", "versioning", "attributes", "php8", "rest-api", "api-management"],
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Adil Shah Ghasi",
+            "email": "adil.shahghasi@gmail.com",
+            "homepage": "https://github.com/shahghasiadil"
+        }
+    ],
+      "repositories": [
+        {
+            "type": "path",
+            "url": "../laravel-api-versioning",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^12.0",
+        "shahghasiadil/laravel-api-versioning": "@dev"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ShahGhasiAdil\\LaravelApiVersioning\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ShahGhasiAdil\\LaravelApiVersioning\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ShahGhasiAdil\\LaravelApiVersioning\\ApiVersioningServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

@@ -3,9 +3,8 @@
 namespace ShahGhasiAdil\LaravelApiVersioning\Middleware;
 
 use Closure;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
@@ -18,7 +17,7 @@ class AttributeApiVersionMiddleware
         private AttributeVersionResolver $attributeResolver
     ) {}
 
-    public function handle(Request $request, Closure $next): JsonResponse
+    public function handle(Request $request, Closure $next): Response
     {
         try {
             // Detect requested version

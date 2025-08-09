@@ -1,0 +1,94 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\MapToApiVersion;
+use ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
+
+{{ versionAttribute }}
+{{ deprecatedAttribute }}
+class {{ class }} extends Controller
+{
+    use HasApiVersionAttributes;
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => [],
+            'version' => $this->getCurrentApiVersion(),
+            'deprecated' => $this->isVersionDeprecated(),
+            'meta' => [
+                'total' => 0,
+                'per_page' => 15,
+                'current_page' => 1,
+            ],
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        // Validation and creation logic here
+
+        return response()->json([
+            'data' => [
+                'id' => 1,
+                'created_at' => now()->toISOString(),
+            ],
+            'version' => $this->getCurrentApiVersion(),
+        ], 201);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(string $id): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'id' => $id,
+                // Add your resource attributes here
+            ],
+            'version' => $this->getCurrentApiVersion(),
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, string $id): JsonResponse
+    {
+        // Validation and update logic here
+
+        return response()->json([
+            'data' => [
+                'id' => $id,
+                'updated_at' => now()->toISOString(),
+            ],
+            'version' => $this->getCurrentApiVersion(),
+        ]);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        // Deletion logic here
+
+        return response()->json([
+            'message' => 'Resource deleted successfully',
+            'version' => $this->getCurrentApiVersion(),
+        ]);
+    }
+}

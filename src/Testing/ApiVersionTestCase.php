@@ -2,8 +2,8 @@
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Testing;
 
-use Orchestra\Testbench\TestCase as BaseTestCase;
 use Illuminate\Testing\TestResponse;
+use Orchestra\Testbench\TestCase as BaseTestCase;
 use ShahGhasiAdil\LaravelApiVersioning\ApiVersioningServiceProvider;
 
 abstract class ApiVersionTestCase extends BaseTestCase
@@ -69,7 +69,8 @@ abstract class ApiVersionTestCase extends BaseTestCase
     protected function getWithVersionQuery(string $uri, string $version, array $headers = []): TestResponse
     {
         $separator = str_contains($uri, '?') ? '&' : '?';
-        return $this->withHeaders($headers)->get($uri . $separator . 'api-version=' . $version);
+
+        return $this->withHeaders($headers)->get($uri.$separator.'api-version='.$version);
     }
 
     /**
@@ -108,6 +109,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     protected function assertApiVersion(TestResponse $response, string $expectedVersion): static
     {
         $response->assertHeader('X-API-Version', $expectedVersion);
+
         return $this;
     }
 
@@ -131,6 +133,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     protected function assertSupportedVersions(TestResponse $response, array $versions): static
     {
         $response->assertHeader('X-API-Supported-Versions', implode(', ', $versions));
+
         return $this;
     }
 
@@ -140,6 +143,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     protected function assertApiVersionNotDeprecated(TestResponse $response): static
     {
         $response->assertHeaderMissing('X-API-Deprecated');
+
         return $this;
     }
 }

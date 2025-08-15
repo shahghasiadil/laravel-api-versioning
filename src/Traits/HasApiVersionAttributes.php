@@ -19,18 +19,21 @@ trait HasApiVersionAttributes
     protected function isVersionDeprecated(): bool
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo?->isDeprecated ?? false;
     }
 
     protected function isVersionNeutral(): bool
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo?->isNeutral ?? false;
     }
 
     protected function getDeprecationMessage(): ?string
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo?->deprecationMessage;
     }
 }

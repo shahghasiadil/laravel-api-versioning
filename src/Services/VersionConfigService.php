@@ -57,6 +57,7 @@ class VersionConfigService
     public function hasVersionMapping(string $version): bool
     {
         $versionMapping = $this->config['version_method_mapping'] ?? [];
+
         return isset($versionMapping[$version]);
     }
 

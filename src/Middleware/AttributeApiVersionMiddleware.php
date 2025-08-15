@@ -4,11 +4,11 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
-use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
+use Symfony\Component\HttpFoundation\Response;
 
 class AttributeApiVersionMiddleware
 {
@@ -29,7 +29,7 @@ class AttributeApiVersionMiddleware
             // Resolve version info using attributes
             $versionInfo = $this->attributeResolver->resolveVersionForRoute($route, $requestedVersion);
 
-            if (!$versionInfo) {
+            if (! $versionInfo) {
                 throw new UnsupportedVersionException(
                     "API version '{$requestedVersion}' is not supported for this endpoint."
                 );
@@ -80,7 +80,7 @@ class AttributeApiVersionMiddleware
 
         // Add route-specific supported versions
         $routeVersions = $this->attributeResolver->getAllVersionsForRoute($route);
-        if (!empty($routeVersions)) {
+        if (! empty($routeVersions)) {
             $response->headers->set('X-API-Route-Versions', implode(', ', $routeVersions));
         }
     }

@@ -17,7 +17,7 @@ abstract class VersionedJsonResource extends JsonResource
     {
         $version = $this->getCurrentApiVersion();
 
-        if (!$version) {
+        if (! $version) {
             return $this->callVersionMethod('default', $request);
         }
 

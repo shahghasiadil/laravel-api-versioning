@@ -1,4 +1,5 @@
 <?php
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Attributes;
 
 use Attribute;

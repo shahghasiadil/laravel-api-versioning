@@ -2,16 +2,17 @@
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Tests\Unit;
 
-use ShahGhasiAdil\LaravelApiVersioning\Tests\TestCase;
+use Illuminate\Routing\Route;
+use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
+use ShahGhasiAdil\LaravelApiVersioning\Examples\V1UserController;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
-use ShahGhasiAdil\LaravelApiVersioning\Examples\V1UserController;
-use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
-use Illuminate\Routing\Route;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\TestCase;
 
 class AttributeVersionResolverTest extends TestCase
 {
     private AttributeVersionResolver $resolver;
+
     private VersionManager $versionManager;
 
     protected function setUp(): void
@@ -33,15 +34,15 @@ class AttributeVersionResolverTest extends TestCase
         $this->resolver = new AttributeVersionResolver($this->versionManager);
     }
 
-    public function testResolvesVersionFromControllerAttribute()
+    public function test_resolves_version_from_controller_attribute()
     {
         // Create a mock route with controller
-        $controller = new V1UserController();
+        $controller = new V1UserController;
         $route = new Route(['GET'], 'users', [V1UserController::class, 'index']);
         $route->setContainer($this->app);
 
         // We need to manually set the controller since we're not going through normal routing
-        $route->setAction(['uses' => V1UserController::class . '@index']);
+        $route->setAction(['uses' => V1UserController::class.'@index']);
 
         // Mock the route to return our controller
         $route = $this->createMockRoute($controller, 'index');
@@ -54,9 +55,9 @@ class AttributeVersionResolverTest extends TestCase
         $this->assertEquals('2025-12-31', $versionInfo->sunsetDate);
     }
 
-    public function testResolvesVersionNeutralEndpoint()
+    public function test_resolves_version_neutral_endpoint()
     {
-        $controller = new SharedController();
+        $controller = new SharedController;
         $route = $this->createMockRoute($controller, 'health');
 
         $versionInfo = $this->resolver->resolveVersionForRoute($route, '2.0');
@@ -65,9 +66,9 @@ class AttributeVersionResolverTest extends TestCase
         $this->assertTrue($versionInfo->isNeutral);
     }
 
-    public function testReturnsNullForUnsupportedVersion()
+    public function test_returns_null_for_unsupported_version()
     {
-        $controller = new V1UserController();
+        $controller = new V1UserController;
         $route = $this->createMockRoute($controller, 'index');
 
         $versionInfo = $this->resolver->resolveVersionForRoute($route, '3.0');
@@ -75,9 +76,9 @@ class AttributeVersionResolverTest extends TestCase
         $this->assertNull($versionInfo);
     }
 
-    public function testGetAllVersionsForRoute()
+    public function test_get_all_versions_for_route()
     {
-        $controller = new V1UserController();
+        $controller = new V1UserController;
         $route = $this->createMockRoute($controller, 'index');
 
         $versions = $this->resolver->getAllVersionsForRoute($route);
@@ -93,10 +94,10 @@ class AttributeVersionResolverTest extends TestCase
         $route = $this->createMock(Route::class);
 
         $route->method('getController')
-              ->willReturn($controller);
+            ->willReturn($controller);
 
         $route->method('getActionMethod')
-              ->willReturn($method);
+            ->willReturn($method);
 
         return $route;
     }

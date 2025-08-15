@@ -3,7 +3,6 @@
 namespace YourVendor\LaravelApiVersioning\Console\Commands;
 
 use Illuminate\Console\GeneratorCommand;
-use Illuminate\Support\Str;
 
 class MakeVersionedControllerCommand extends GeneratorCommand
 {
@@ -20,12 +19,12 @@ class MakeVersionedControllerCommand extends GeneratorCommand
 
     protected function getStub()
     {
-        return __DIR__ . '/stubs/versioned-controller.stub';
+        return __DIR__.'/stubs/versioned-controller.stub';
     }
 
     protected function getDefaultNamespace($rootNamespace)
     {
-        return $rootNamespace . '\Http\Controllers\Api';
+        return $rootNamespace.'\Http\Controllers\Api';
     }
 
     protected function buildClass($name)

@@ -32,7 +32,7 @@ class DynamicUserResource extends VersionedJsonResource
 
     private function getFieldValue(string $field): mixed
     {
-        return match($field) {
+        return match ($field) {
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,

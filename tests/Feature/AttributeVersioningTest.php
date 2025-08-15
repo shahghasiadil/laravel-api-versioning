@@ -2,11 +2,11 @@
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Tests\Feature;
 
-use ShahGhasiAdil\LaravelApiVersioning\Tests\TestCase;
+use Illuminate\Testing\TestResponse;
+use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\V1UserController;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\V2UserController;
-use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
-use Illuminate\Testing\TestResponse;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\TestCase;
 
 class AttributeVersioningTest extends TestCase
 {
@@ -30,33 +30,33 @@ class AttributeVersioningTest extends TestCase
         });
     }
 
-    public function testV1ControllerRespondsToV1Request()
+    public function test_v1_controller_responds_to_v1_request()
     {
         $response = $this->getWithVersion('/api/v1/users', '1.0');
 
         $response->assertStatus(200)
-                ->assertJson(['version' => '1.0'])
-                ->assertJsonStructure(['data' => [['id', 'name']]]);
+            ->assertJson(['version' => '1.0'])
+            ->assertJsonStructure(['data' => [['id', 'name']]]);
 
         $this->assertApiVersion($response, '1.0')
-             ->assertApiVersionDeprecated($response, '2025-12-31');
+            ->assertApiVersionDeprecated($response, '2025-12-31');
     }
 
-    public function testV2ControllerRespondsToV2Request()
+    public function test_v2_controller_responds_to_v2_request()
     {
         $response = $this->getWithVersion('/api/v2/users', '2.0');
 
         $response->assertStatus(200)
-                ->assertJson(['version' => '2.0'])
-                ->assertJsonStructure([
-                    'data' => [['id', 'name', 'email', 'created_at', 'profile']],
-                    'meta' => ['total', 'per_page']
-                ]);
+            ->assertJson(['version' => '2.0'])
+            ->assertJsonStructure([
+                'data' => [['id', 'name', 'email', 'created_at', 'profile']],
+                'meta' => ['total', 'per_page'],
+            ]);
 
         $this->assertApiVersion($response, '2.0');
     }
 
-    public function testVersionNeutralEndpoint()
+    public function test_version_neutral_endpoint()
     {
         $response = $this->getWithVersion('/api/health', '1.0');
         $response->assertStatus(200)->assertJson(['status' => 'healthy']);
@@ -65,17 +65,17 @@ class AttributeVersioningTest extends TestCase
         $response->assertStatus(200)->assertJson(['status' => 'healthy']);
     }
 
-    public function testUnsupportedVersionReturns400()
+    public function test_unsupported_version_returns400()
     {
         $response = $this->getWithVersion('/api/v1/users', '3.0');
 
         $response->assertStatus(400)
-                ->assertJson([
-                    'error' => 'Unsupported API Version'
-                ]);
+            ->assertJson([
+                'error' => 'Unsupported API Version',
+            ]);
     }
 
-    public function testVersionDetectionFromQuery()
+    public function test_version_detection_from_query()
     {
         $response = $this->getWithVersionQuery('/api/v2/users', '2.0');
 
@@ -99,7 +99,8 @@ class AttributeVersioningTest extends TestCase
     protected function getWithVersionQuery(string $uri, string $version, array $headers = []): TestResponse
     {
         $separator = str_contains($uri, '?') ? '&' : '?';
-        return $this->withHeaders($headers)->get($uri . $separator . 'api-version=' . $version);
+
+        return $this->withHeaders($headers)->get($uri.$separator.'api-version='.$version);
     }
 
     /**
@@ -108,6 +109,7 @@ class AttributeVersioningTest extends TestCase
     protected function assertApiVersion(TestResponse $response, string $expectedVersion): static
     {
         $response->assertHeader('X-API-Version', $expectedVersion);
+
         return $this;
     }
 
@@ -131,6 +133,7 @@ class AttributeVersioningTest extends TestCase
     protected function assertSupportedVersions(TestResponse $response, array $versions): static
     {
         $response->assertHeader('X-API-Supported-Versions', implode(', ', $versions));
+
         return $this;
     }
 }

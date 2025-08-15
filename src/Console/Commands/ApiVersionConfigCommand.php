@@ -23,15 +23,18 @@ class ApiVersionConfigCommand extends Command
     {
         if ($this->option('show')) {
             $this->showConfiguration();
+
             return self::SUCCESS;
         }
 
         if ($version = $this->option('add-version')) {
             $this->addVersionMapping($version);
+
             return self::SUCCESS;
         }
 
         $this->error('Please specify an action. Use --help for available options.');
+
         return self::FAILURE;
     }
 
@@ -42,13 +45,14 @@ class ApiVersionConfigCommand extends Command
 
         // Show supported versions
         $versions = $this->configService->getSupportedVersions();
-        $this->info('✅ Supported Versions: ' . implode(', ', $versions));
+        $this->info('✅ Supported Versions: '.implode(', ', $versions));
         $this->newLine();
 
         // Show version mappings
         $mappings = $this->configService->getVersionMappings();
         if (empty($mappings)) {
             $this->warn('No version method mappings configured.');
+
             return;
         }
 
@@ -56,6 +60,7 @@ class ApiVersionConfigCommand extends Command
             ['Version', 'Method', 'Inheritance'],
             collect($mappings)->map(function ($method, $version) {
                 $inheritance = implode(' → ', $this->configService->getInheritanceChain($version));
+
                 return [$version, $method, $inheritance ?: 'None'];
             })->toArray()
         );
@@ -63,18 +68,19 @@ class ApiVersionConfigCommand extends Command
 
     private function addVersionMapping(string $version): void
     {
-        $method = $this->option('method') ?? $this->ask('Method name for version ' . $version);
+        $method = $this->option('method') ?? $this->ask('Method name for version '.$version);
 
-        if (!$method) {
+        if (! $method) {
             $this->error('Method name is required.');
+
             return;
         }
 
-        $this->info("To add version mapping, update your config/api-versioning.php:");
+        $this->info('To add version mapping, update your config/api-versioning.php:');
         $this->line("'version_method_mapping' => [");
-        $this->line("    // ... existing mappings");
+        $this->line('    // ... existing mappings');
         $this->line("    '{$version}' => '{$method}',");
-        $this->line("],");
+        $this->line('],');
 
         $this->newLine();
         $this->info('💡 Don\'t forget to implement the method in your resource classes!');

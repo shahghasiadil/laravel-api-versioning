@@ -10,4 +10,3 @@ class ApiVersionNeutral
     // This attribute marks controllers/methods as version-neutral
     // They will respond to all API versions
 }
-

@@ -32,7 +32,7 @@ class ApiVersionsCommand extends Command
 
         if ($this->option('route')) {
             $pattern = $this->option('route');
-            $routes = $routes->filter(fn($route) => str_contains($route->uri(), $pattern));
+            $routes = $routes->filter(fn ($route) => str_contains($route->uri(), $pattern));
         }
 
         $headers = ['Method', 'URI', 'Controller', 'Versions', 'Deprecated', 'Sunset Date'];
@@ -46,7 +46,7 @@ class ApiVersionsCommand extends Command
             $allVersions = $this->resolver->getAllVersionsForRoute($route);
             $versionsStr = implode(', ', $allVersions);
 
-            if ($this->option('version') && !in_array($this->option('version'), $allVersions)) {
+            if ($this->option('version') && ! in_array($this->option('version'), $allVersions)) {
                 continue;
             }
 
@@ -77,19 +77,20 @@ class ApiVersionsCommand extends Command
                 $action,
                 $versionsStr ?: 'None',
                 $deprecatedInfo ?: 'No',
-                $sunsetDate ?: '-'
+                $sunsetDate ?: '-',
             ];
         }
 
         if (empty($rows)) {
             $this->info('No matching routes found.');
+
             return self::SUCCESS;
         }
 
         $this->table($headers, $rows);
 
         $this->newLine();
-        $this->info('Supported API Versions: ' . implode(', ', $this->versionManager->getSupportedVersions()));
+        $this->info('Supported API Versions: '.implode(', ', $this->versionManager->getSupportedVersions()));
 
         return self::SUCCESS;
     }

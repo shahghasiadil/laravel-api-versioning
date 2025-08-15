@@ -1,4 +1,5 @@
 <?php
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Examples;
 
 use Illuminate\Http\JsonResponse;

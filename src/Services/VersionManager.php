@@ -20,11 +20,11 @@ class VersionManager
 
         // Try each detection method in order
         foreach ($this->config['detection_methods'] as $method => $config) {
-            if (!$config['enabled']) {
+            if (! $config['enabled']) {
                 continue;
             }
 
-            $version = match($method) {
+            $version = match ($method) {
                 'header' => $request->header($config['header_name']),
                 'query' => $request->query($config['parameter_name']),
                 'path' => $this->extractVersionFromPath($request, $config),
@@ -40,7 +40,7 @@ class VersionManager
         // Fall back to default version
         $version = $version ?? $this->config['default_version'];
 
-        if (!$this->isSupportedVersion($version)) {
+        if (! $this->isSupportedVersion($version)) {
             throw new UnsupportedVersionException("API version '{$version}' is not supported.");
         }
 
@@ -52,7 +52,7 @@ class VersionManager
         $path = $request->path();
         $prefix = $config['prefix'];
 
-        if (preg_match('#^' . preg_quote($prefix, '#') . '(\d+(?:\.\d+)?)/#', $path, $matches)) {
+        if (preg_match('#^'.preg_quote($prefix, '#').'(\d+(?:\.\d+)?)/#', $path, $matches)) {
             return $matches[1];
         }
 
@@ -62,12 +62,12 @@ class VersionManager
     private function extractVersionFromMediaType(Request $request, array $config): ?string
     {
         $accept = $request->header('Accept');
-        if (!$accept) {
+        if (! $accept) {
             return null;
         }
 
         $pattern = str_replace('%s', '(\d+(?:\.\d+)?)', preg_quote($config['format'], '#'));
-        if (preg_match('#' . $pattern . '#', $accept, $matches)) {
+        if (preg_match('#'.$pattern.'#', $accept, $matches)) {
             return $matches[1];
         }
 

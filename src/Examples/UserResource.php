@@ -5,6 +5,21 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Examples;
 use Illuminate\Http\Request;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedJsonResource;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
+ * @property \Illuminate\Support\Carbon|null $last_login
+ * @property string|null $avatar_url
+ * @property string|null $bio
+ * @property string|null $theme
+ * @property string|null $language
+ * @property array|null $notification_settings
+ * @property int|null $login_count
+ * @property int|null $posts_count
+ */
 class UserResource extends VersionedJsonResource
 {
     /**

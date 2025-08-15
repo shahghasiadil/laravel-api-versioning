@@ -5,6 +5,19 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Examples;
 use Illuminate\Http\Request;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedJsonResource;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
+ * @property string|null $avatar_url
+ * @property string|null $bio
+ * @property string|null $theme
+ * @property string|null $language
+ * @property int|null $login_count
+ * @property int|null $posts_count
+ */
 class DynamicUserResource extends VersionedJsonResource
 {
     /**
@@ -32,7 +45,7 @@ class DynamicUserResource extends VersionedJsonResource
 
     private function getFieldValue(string $field): mixed
     {
-        return match ($field) {
+        return match($field) {
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
@@ -50,7 +63,7 @@ class DynamicUserResource extends VersionedJsonResource
                 'login_count' => $this->login_count ?? 0,
                 'posts_count' => $this->posts_count ?? 0,
             ],
-            default => $this->$field ?? null,
+            default => $this->resource->$field ?? null,
         };
     }
 }

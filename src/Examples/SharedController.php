@@ -1,11 +1,11 @@
 <?php
 
-namespace ShahGhasiadil\LaravelApiVersioning\Examples;
+namespace ShahGhasiAdil\LaravelApiVersioning\Examples;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-use ShahGhasiadil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
-use ShahGhasiadil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
+use ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
 
 class SharedController extends Controller
 {

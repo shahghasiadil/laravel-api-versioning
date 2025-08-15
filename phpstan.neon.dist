@@ -5,8 +5,7 @@ parameters:
     level: 5
     paths:
         - src
-        - config
-        - database
+        - tests
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true

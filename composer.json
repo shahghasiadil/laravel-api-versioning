@@ -1,11 +1,11 @@
 {
     "name": "shahghasiadil/laravel-api-versioning",
-    "description": "Attribute-based API versioning for Laravel - inspired by ASP.NET Core API versioning",
+    "description": "Attribute-based API versioning for Laravel",
     "keywords": ["laravel", "api", "versioning", "attributes", "php8", "rest-api", "api-management"],
     "license": "MIT",
     "authors": [
         {
-            "name": "Adil Shah Ghasi",
+            "name": "Shahghasi Adil",
             "email": "adil.shahghasi@gmail.com",
             "homepage": "https://github.com/shahghasiadil"
         }

@@ -1,5 +1,11 @@
 # Laravel API Versioning
 
+<div align="center">
+  <img src="./assets/api-versioning.png" alt="Laravel API Versioning Logo" width="200">
+  <br>
+  <strong>Attribute-based API versioning for Laravel</strong>
+</div>
+
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/shahghasiadil/laravel-api-versioning.svg?style=flat-square)](https://packagist.org/packages/shahghasiadil/laravel-api-versioning)
 [![Total Downloads](https://img.shields.io/packagist/dt/shahghasiadil/laravel-api-versioning.svg?style=flat-square)](https://packagist.org/packages/shahghasiadil/laravel-api-versioning)
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace YourVendor\LaravelApiVersioning\Console\Commands;
+namespace ShahGhasiAdil\LaravelApiVersioning\Console\Commands;
 
 use Illuminate\Console\GeneratorCommand;
 

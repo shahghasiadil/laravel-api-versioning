@@ -77,10 +77,20 @@ return [
 ### 2. Add Middleware to Routes
 
 ```php
-// routes/api.php
-Route::middleware(['api', 'api.version'])->group(function () {
+// routes/api.php - Using middleware alias
+Route::middleware('api.version')->group(function () {
     Route::apiResource('users', UserController::class);
 });
+
+// Alternative: Using direct middleware class
+use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
+
+Route::middleware(AttributeApiVersionMiddleware::class)->group(function () {
+    Route::apiResource('users', UserController::class);
+});
+
+// For specific routes only
+Route::apiResource('users', UserController::class)->middleware('api.version');
 ```
 
 ### 3. Create Versioned Controllers
@@ -152,6 +162,54 @@ class UserResource extends VersionedJsonResource
         return $this->toArrayV2($request);
     }
 }
+```
+
+## Middleware Configuration
+
+The package registers the middleware alias automatically. You have several options for applying it:
+
+### Option 1: Route Group (Recommended)
+```php
+// routes/api.php
+Route::middleware('api.version')->group(function () {
+    Route::apiResource('users', UserController::class);
+    Route::apiResource('posts', PostController::class);
+});
+```
+
+### Option 2: Direct Middleware Class
+```php
+// routes/api.php
+use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
+
+Route::middleware(AttributeApiVersionMiddleware::class)->group(function () {
+    Route::apiResource('users', UserController::class);
+});
+```
+
+### Option 3: Global Middleware (Laravel 12)
+```php
+// bootstrap/app.php
+use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+        apiMiddleware: [
+            'throttle:api',
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            AttributeApiVersionMiddleware::class, // Add here for all API routes
+        ],
+    );
+```
+
+### Option 4: Individual Routes
+```php
+Route::middleware('api.version')->get('/users', [UserController::class, 'index']);
+Route::post('/users', [UserController::class, 'store'])->middleware('api.version');
 ```
 
 ## Usage

@@ -13,7 +13,7 @@ class ApiVersionsCommand extends Command
 {
     protected $signature = 'api:versions
                            {--route= : Filter by specific route pattern}
-                           {--version= : Filter by specific version}
+                           {--api-version= : Filter by specific version}
                            {--deprecated : Show only deprecated endpoints}';
 
     protected $description = 'Display API versioning information for all routes';
@@ -48,7 +48,7 @@ class ApiVersionsCommand extends Command
             $allVersions = $this->resolver->getAllVersionsForRoute($route);
             $versionsStr = implode(', ', $allVersions);
 
-            $versionFilter = $this->option('version');
+            $versionFilter = $this->option('api-version');
             if (is_string($versionFilter) && !in_array($versionFilter, $allVersions, true)) {
                 continue;
             }

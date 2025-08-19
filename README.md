@@ -1,8 +1,12 @@
 # Laravel API Versioning
 
+<div align="center">
+  <img src="./assets/api-versioning.png" alt="Laravel API Versioning Logo" width="200">
+  <br>
+  <strong>Attribute-based API versioning for Laravel</strong>
+</div>
+
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/shahghasiadil/laravel-api-versioning.svg?style=flat-square)](https://packagist.org/packages/shahghasiadil/laravel-api-versioning)
-[![GitHub Tests Action Status](https://img.shields.io/github/workflow/status/shahghasiadil/laravel-api-versioning/run-tests?label=tests)](https://github.com/shahghasiadil/laravel-api-versioning/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/workflow/status/shahghasiadil/laravel-api-versioning/Check%20&%20fix%20styling?label=code%20style)](https://github.com/shahghasiadil/laravel-api-versioning/actions?query=workflow%3A"Check+%26+fix+styling"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/shahghasiadil/laravel-api-versioning.svg?style=flat-square)](https://packagist.org/packages/shahghasiadil/laravel-api-versioning)
 
 Attribute-based API versioning for Laravel. This package provides a clean, declarative way to manage API versions using PHP 8+ attributes.
@@ -517,7 +521,7 @@ class StatusController extends Controller
 
 ```php
 // routes/api.php
-Route::middleware(['api', 'api.version'])->prefix('api')->group(function () {
+Route::middleware(['api', 'api.version'])->group(function () {
     // Version-specific routes
     Route::prefix('v1')->group(function () {
         Route::get('users', [V1UserController::class, 'index']);
@@ -603,7 +607,7 @@ Please review our security policy on how to report security vulnerabilities.
 
 ## Credits
 
-- [Adil Shah Ghasi](https://github.com/shahghasiadil)
+- [Shahghasi Adil](https://github.com/shahghasiadil)
 - [All Contributors](../../contributors)
 
 ## License

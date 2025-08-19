@@ -11,7 +11,7 @@ class MakeVersionedControllerCommand extends GeneratorCommand
 {
     protected $signature = 'make:versioned-controller
                            {name : The name of the controller}
-                           {--version= : The API version (e.g., 1.0, 2.0)}
+                           {--api-version= : The API version (e.g., 1.0, 2.0)}
                            {--deprecated : Mark the controller as deprecated}
                            {--sunset= : Sunset date for deprecated controller}
                            {--replaced-by= : Version that replaces this controller}';
@@ -27,7 +27,7 @@ class MakeVersionedControllerCommand extends GeneratorCommand
 
     protected function getStub(): string
     {
-        return __DIR__.'/stubs/versioned-controller.stub';
+        return __DIR__.'/../stubs/versioned-controller.stub';
     }
 
     protected function getDefaultNamespace($rootNamespace): string
@@ -39,7 +39,7 @@ class MakeVersionedControllerCommand extends GeneratorCommand
     {
         $stub = $this->files->get($this->getStub());
 
-        $version = $this->option('version') ?? '1.0';
+        $version = $this->option('api-version') ?? '1.0';
         $isDeprecated = (bool) $this->option('deprecated');
         $sunsetDate = $this->option('sunset');
         $replacedBy = $this->option('replaced-by');

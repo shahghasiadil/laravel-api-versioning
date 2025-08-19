@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
 use Illuminate\Routing\Route;
@@ -13,14 +15,16 @@ use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 
 class AttributeVersionResolver
 {
-    public function __construct(private VersionManager $versionManager) {}
+    public function __construct(
+        private readonly VersionManager $versionManager
+    ) {}
 
     public function resolveVersionForRoute(Route $route, string $requestedVersion): ?VersionInfo
     {
         $controller = $route->getController();
         $action = $route->getActionMethod();
 
-        if (! $controller || ! $action) {
+        if ($controller === null || $action === null) {
             return null;
         }
 
@@ -35,19 +39,19 @@ class AttributeVersionResolver
 
         // Get method-level version mappings
         $methodVersions = $this->getVersionsFromAttributes($actionMethod, MapToApiVersion::class);
-        if (! empty($methodVersions) && in_array($requestedVersion, $methodVersions)) {
+        if (!empty($methodVersions) && in_array($requestedVersion, $methodVersions, true)) {
             return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
         }
 
         // Get method-level API versions
         $methodApiVersions = $this->getVersionsFromAttributes($actionMethod, ApiVersion::class);
-        if (! empty($methodApiVersions) && in_array($requestedVersion, $methodApiVersions)) {
+        if (!empty($methodApiVersions) && in_array($requestedVersion, $methodApiVersions, true)) {
             return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
         }
 
         // Get controller-level versions
         $controllerVersions = $this->getVersionsFromAttributes($controllerClass, ApiVersion::class);
-        if (! empty($controllerVersions) && in_array($requestedVersion, $controllerVersions)) {
+        if (!empty($controllerVersions) && in_array($requestedVersion, $controllerVersions, true)) {
             return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
         }
 
@@ -62,9 +66,9 @@ class AttributeVersionResolver
     ): VersionInfo {
         $deprecated = null;
 
-        if ($method) {
+        if ($method !== null) {
             $deprecated = $this->getDeprecationInfo($method) ?? $this->getDeprecationInfo($class);
-        } elseif ($class) {
+        } elseif ($class !== null) {
             $deprecated = $this->getDeprecationInfo($class);
         }
 
@@ -80,9 +84,12 @@ class AttributeVersionResolver
 
     private function hasAttribute(ReflectionClass|ReflectionMethod $reflection, string $attributeClass): bool
     {
-        return ! empty($reflection->getAttributes($attributeClass));
+        return !empty($reflection->getAttributes($attributeClass));
     }
 
+    /**
+     * @return string[]
+     */
     private function getVersionsFromAttributes(ReflectionClass|ReflectionMethod $reflection, string $attributeClass): array
     {
         $versions = [];
@@ -90,25 +97,34 @@ class AttributeVersionResolver
 
         foreach ($attributes as $attribute) {
             $instance = $attribute->newInstance();
-            $versions = array_merge($versions, $instance->getVersions());
+            if (method_exists($instance, 'getVersions')) {
+                $versions = array_merge($versions, $instance->getVersions());
+            }
         }
 
         return array_unique($versions);
     }
 
-    private function getDeprecationInfo(ReflectionClass|ReflectionMethod $reflection): ?Deprecated
+    private function getDeprecationInfo(ReflectionClass|ReflectionMethod|null $reflection): ?Deprecated
     {
+        if ($reflection === null) {
+            return null;
+        }
+
         $attributes = $reflection->getAttributes(Deprecated::class);
 
-        return ! empty($attributes) ? $attributes[0]->newInstance() : null;
+        return !empty($attributes) ? $attributes[0]->newInstance() : null;
     }
 
+    /**
+     * @return string[]
+     */
     public function getAllVersionsForRoute(Route $route): array
     {
         $controller = $route->getController();
         $action = $route->getActionMethod();
 
-        if (! $controller || ! $action) {
+        if ($controller === null || $action === null) {
             return [];
         }
 

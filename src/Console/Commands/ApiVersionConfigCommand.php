@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -14,8 +16,9 @@ class ApiVersionConfigCommand extends Command
 
     protected $description = 'Manage API version configuration';
 
-    public function __construct(private VersionConfigService $configService)
-    {
+    public function __construct(
+        private readonly VersionConfigService $configService
+    ) {
         parent::__construct();
     }
 
@@ -23,18 +26,16 @@ class ApiVersionConfigCommand extends Command
     {
         if ($this->option('show')) {
             $this->showConfiguration();
-
             return self::SUCCESS;
         }
 
-        if ($version = $this->option('add-version')) {
-            $this->addVersionMapping($version);
-
+        $addVersion = $this->option('add-version');
+        if (is_string($addVersion)) {
+            $this->addVersionMapping($addVersion);
             return self::SUCCESS;
         }
 
         $this->error('Please specify an action. Use --help for available options.');
-
         return self::FAILURE;
     }
 
@@ -52,15 +53,13 @@ class ApiVersionConfigCommand extends Command
         $mappings = $this->configService->getVersionMappings();
         if (empty($mappings)) {
             $this->warn('No version method mappings configured.');
-
             return;
         }
 
         $this->table(
             ['Version', 'Method', 'Inheritance'],
-            collect($mappings)->map(function ($method, $version) {
+            collect($mappings)->map(function (string $method, string $version): array {
                 $inheritance = implode(' → ', $this->configService->getInheritanceChain($version));
-
                 return [$version, $method, $inheritance ?: 'None'];
             })->toArray()
         );
@@ -68,11 +67,13 @@ class ApiVersionConfigCommand extends Command
 
     private function addVersionMapping(string $version): void
     {
-        $method = $this->option('method') ?? $this->ask('Method name for version '.$version);
+        $method = $this->option('method');
+        if (!is_string($method)) {
+            $method = $this->ask('Method name for version '.$version);
+        }
 
-        if (! $method) {
+        if (!is_string($method) || empty($method)) {
             $this->error('Method name is required.');
-
             return;
         }
 

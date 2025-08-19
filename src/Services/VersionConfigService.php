@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
 class VersionConfigService
 {
-    private array $config;
+    private readonly array $config;
 
     public function __construct()
     {
@@ -27,6 +29,7 @@ class VersionConfigService
 
     /**
      * Get inheritance chain for a version
+     * @return string[]
      */
     public function getInheritanceChain(string $version): array
     {
@@ -45,6 +48,7 @@ class VersionConfigService
 
     /**
      * Get all supported versions from config
+     * @return string[]
      */
     public function getSupportedVersions(): array
     {
@@ -63,9 +67,24 @@ class VersionConfigService
 
     /**
      * Get version mappings for debugging
+     * @return array<string, string>
      */
     public function getVersionMappings(): array
     {
         return $this->config['version_method_mapping'] ?? [];
+    }
+
+    /**
+     * Get version inheritance mappings
+     * @return array<string, string>
+     */
+    public function getVersionInheritance(): array
+    {
+        return $this->config['version_inheritance'] ?? [];
+    }
+
+    public function getDefaultMethod(): string
+    {
+        return $this->config['default_method'] ?? 'toArrayDefault';
     }
 }

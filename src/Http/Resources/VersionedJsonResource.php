@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -12,12 +14,13 @@ abstract class VersionedJsonResource extends JsonResource
 
     /**
      * Transform the resource into an array.
+     * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
         $version = $this->getCurrentApiVersion();
 
-        if (! $version) {
+        if ($version === null) {
             return $this->callVersionMethod('default', $request);
         }
 
@@ -26,6 +29,7 @@ abstract class VersionedJsonResource extends JsonResource
 
     /**
      * Call the appropriate version method based on configuration
+     * @return array<string, mixed>
      */
     protected function callVersionMethod(string $version, Request $request): array
     {
@@ -74,19 +78,23 @@ abstract class VersionedJsonResource extends JsonResource
 
     /**
      * Call method if it exists, otherwise return empty array
+     * @return array<string, mixed>
      */
     private function callMethodIfExists(string $method, Request $request): array
     {
         if ($this->methodExists($method)) {
-            return $this->$method($request);
+            $result = $this->$method($request);
+            return is_array($result) ? $result : [];
         }
 
         // Last resort - return basic resource array
-        return $this->resource->toArray();
+        $resourceArray = $this->resource->toArray();
+        return is_array($resourceArray) ? $resourceArray : [];
     }
 
     /**
      * Add version-specific metadata
+     * @return array<string, mixed>
      */
     public function with(Request $request): array
     {
@@ -101,22 +109,32 @@ abstract class VersionedJsonResource extends JsonResource
     /**
      * Override these methods in your resource classes as needed
      * The configuration will determine which ones are called
+     * @return array<string, mixed>
      */
     protected function toArrayV1(Request $request): array
     {
         return $this->toArrayDefault($request);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function toArrayV11(Request $request): array
     {
         return $this->toArrayV1($request);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function toArrayV2(Request $request): array
     {
         return $this->toArrayDefault($request);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function toArrayV21(Request $request): array
     {
         return $this->toArrayV2($request);
@@ -124,6 +142,7 @@ abstract class VersionedJsonResource extends JsonResource
 
     /**
      * This method must be implemented by child classes
+     * @return array<string, mixed>
      */
     abstract protected function toArrayDefault(Request $request): array;
 }

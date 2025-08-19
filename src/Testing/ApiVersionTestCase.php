@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Testing;
 
 use Illuminate\Testing\TestResponse;
@@ -8,14 +10,17 @@ use ShahGhasiAdil\LaravelApiVersioning\ApiVersioningServiceProvider;
 
 abstract class ApiVersionTestCase extends BaseTestCase
 {
-    protected function getPackageProviders($app)
+    /**
+     * @return class-string[]
+     */
+    protected function getPackageProviders($app): array
     {
         return [
             ApiVersioningServiceProvider::class,
         ];
     }
 
-    protected function getEnvironmentSetUp($app)
+    protected function getEnvironmentSetUp($app): void
     {
         // Define environment setup for testing
         $app['config']->set('api-versioning', [
@@ -55,6 +60,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
 
     /**
      * Call the given URI with API version header
+     * @param array<string, string> $headers
      */
     protected function getWithVersion(string $uri, string $version, array $headers = []): TestResponse
     {
@@ -65,6 +71,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
 
     /**
      * Call the given URI with API version query parameter
+     * @param array<string, string> $headers
      */
     protected function getWithVersionQuery(string $uri, string $version, array $headers = []): TestResponse
     {
@@ -75,6 +82,8 @@ abstract class ApiVersionTestCase extends BaseTestCase
 
     /**
      * Make a POST request with API version
+     * @param array<string, mixed> $data
+     * @param array<string, string> $headers
      */
     protected function postWithVersion(string $uri, array $data, string $version, array $headers = []): TestResponse
     {
@@ -85,6 +94,8 @@ abstract class ApiVersionTestCase extends BaseTestCase
 
     /**
      * Make a PUT request with API version
+     * @param array<string, mixed> $data
+     * @param array<string, string> $headers
      */
     protected function putWithVersion(string $uri, array $data, string $version, array $headers = []): TestResponse
     {
@@ -95,6 +106,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
 
     /**
      * Make a DELETE request with API version
+     * @param array<string, string> $headers
      */
     protected function deleteWithVersion(string $uri, string $version, array $headers = []): TestResponse
     {
@@ -120,7 +132,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     {
         $response->assertHeader('X-API-Deprecated', 'true');
 
-        if ($sunsetDate) {
+        if ($sunsetDate !== null) {
             $response->assertHeader('X-API-Sunset', $sunsetDate);
         }
 
@@ -129,6 +141,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
 
     /**
      * Assert response supports specific versions
+     * @param string[] $versions
      */
     protected function assertSupportedVersions(TestResponse $response, array $versions): static
     {
@@ -143,6 +156,37 @@ abstract class ApiVersionTestCase extends BaseTestCase
     protected function assertApiVersionNotDeprecated(TestResponse $response): static
     {
         $response->assertHeaderMissing('X-API-Deprecated');
+
+        return $this;
+    }
+
+    /**
+     * Assert response has route-specific version headers
+     * @param string[] $versions
+     */
+    protected function assertRouteVersions(TestResponse $response, array $versions): static
+    {
+        $response->assertHeader('X-API-Route-Versions', implode(', ', $versions));
+
+        return $this;
+    }
+
+    /**
+     * Assert response has deprecation message
+     */
+    protected function assertDeprecationMessage(TestResponse $response, string $message): static
+    {
+        $response->assertHeader('X-API-Deprecation-Message', $message);
+
+        return $this;
+    }
+
+    /**
+     * Assert response has replacement version
+     */
+    protected function assertReplacedBy(TestResponse $response, string $version): static
+    {
+        $response->assertHeader('X-API-Replaced-By', $version);
 
         return $this;
     }

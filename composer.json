@@ -1,7 +1,7 @@
 {
     "name": "shahghasiadil/laravel-api-versioning",
-    "description": "Attribute-based API versioning for Laravel",
-    "keywords": ["laravel", "api", "versioning", "attributes", "php8", "rest-api", "api-management"],
+    "description": "Attribute-based API versioning for Laravel with strict type safety",
+    "keywords": ["laravel", "api", "versioning", "attributes", "php8", "rest-api", "api-management", "type-safety"],
     "license": "MIT",
     "authors": [
         {
@@ -10,7 +10,6 @@
             "homepage": "https://github.com/shahghasiadil"
         }
     ],
-
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0"
@@ -23,7 +22,8 @@
         "larastan/larastan": "^2.9||^3.0",
         "phpstan/extension-installer": "^1.3",
         "phpstan/phpstan-deprecation-rules": "^1.1||^2.0",
-        "phpstan/phpstan-phpunit": "^1.3||^2.0"
+        "phpstan/phpstan-phpunit": "^1.3||^2.0",
+        "phpstan/phpstan-strict-rules": "^1.5||^2.0"
     },
     "autoload": {
         "psr-4": {
@@ -47,6 +47,13 @@
     "config": {
         "allow-plugins": {
             "phpstan/extension-installer": true
-        }
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "analyse": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "format": "vendor/bin/pint"
     }
 }

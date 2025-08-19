@@ -1,8 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 return [
+    /*
+    |--------------------------------------------------------------------------
+    | Default API Version
+    |--------------------------------------------------------------------------
+    |
+    | The default version to use when no version is specified in the request.
+    | This should be a string representing your current stable API version.
+    |
+    */
     'default_version' => '1.0',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Version Detection Methods
+    |--------------------------------------------------------------------------
+    |
+    | Configure how API versions should be detected from incoming requests.
+    | Multiple methods can be enabled simultaneously, and they will be
+    | checked in the order they are defined here.
+    |
+    */
     'detection_methods' => [
         'header' => [
             'enabled' => true,
@@ -22,6 +43,15 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Supported API Versions
+    |--------------------------------------------------------------------------
+    |
+    | List all the API versions that your application supports.
+    | Requests for unsupported versions will return a 400 error.
+    |
+    */
     'supported_versions' => [
         '1.0',
         '1.1',
@@ -69,4 +99,17 @@ return [
     |
     */
     'default_method' => 'toArrayDefault',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Documentation
+    |--------------------------------------------------------------------------
+    |
+    | URL to your API documentation. This will be included in error responses
+    | to help developers find more information about supported versions.
+    |
+    */
+    'documentation' => [
+        'base_url' => env('API_DOCUMENTATION_URL'),
+    ],
 ];

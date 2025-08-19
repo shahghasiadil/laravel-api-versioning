@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -17,22 +19,22 @@ class ApiVersionsCommand extends Command
     protected $description = 'Display API versioning information for all routes';
 
     public function __construct(
-        private Router $router,
-        private VersionManager $versionManager,
-        private AttributeVersionResolver $resolver
+        private readonly Router $router,
+        private readonly VersionManager $versionManager,
+        private readonly AttributeVersionResolver $resolver
     ) {
         parent::__construct();
     }
 
     public function handle(): int
     {
-        $routes = collect($this->router->getRoutes())->filter(function ($route) {
+        $routes = collect($this->router->getRoutes())->filter(function ($route): bool {
             return str_contains($route->uri(), 'api/');
         });
 
-        if ($this->option('route')) {
-            $pattern = $this->option('route');
-            $routes = $routes->filter(fn ($route) => str_contains($route->uri(), $pattern));
+        $routeFilter = $this->option('route');
+        if (is_string($routeFilter)) {
+            $routes = $routes->filter(fn ($route) => str_contains($route->uri(), $routeFilter));
         }
 
         $headers = ['Method', 'URI', 'Controller', 'Versions', 'Deprecated', 'Sunset Date'];
@@ -46,7 +48,8 @@ class ApiVersionsCommand extends Command
             $allVersions = $this->resolver->getAllVersionsForRoute($route);
             $versionsStr = implode(', ', $allVersions);
 
-            if ($this->option('version') && ! in_array($this->option('version'), $allVersions)) {
+            $versionFilter = $this->option('version');
+            if (is_string($versionFilter) && !in_array($versionFilter, $allVersions, true)) {
                 continue;
             }
 
@@ -57,7 +60,7 @@ class ApiVersionsCommand extends Command
             foreach ($allVersions as $version) {
                 try {
                     $versionInfo = $this->resolver->resolveVersionForRoute($route, $version);
-                    if ($versionInfo && $versionInfo->isDeprecated) {
+                    if ($versionInfo !== null && $versionInfo->isDeprecated) {
                         $deprecatedInfo = 'Yes';
                         $sunsetDate = $versionInfo->sunsetDate ?? 'Not set';
                         break;
@@ -83,7 +86,6 @@ class ApiVersionsCommand extends Command
 
         if (empty($rows)) {
             $this->info('No matching routes found.');
-
             return self::SUCCESS;
         }
 

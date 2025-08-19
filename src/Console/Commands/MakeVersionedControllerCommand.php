@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Console\Commands;
 
 use Illuminate\Console\GeneratorCommand;
+use Illuminate\Filesystem\Filesystem;
 
 class MakeVersionedControllerCommand extends GeneratorCommand
 {
@@ -17,22 +20,27 @@ class MakeVersionedControllerCommand extends GeneratorCommand
 
     protected $type = 'Controller';
 
-    protected function getStub()
+    public function __construct(Filesystem $files)
+    {
+        parent::__construct($files);
+    }
+
+    protected function getStub(): string
     {
         return __DIR__.'/stubs/versioned-controller.stub';
     }
 
-    protected function getDefaultNamespace($rootNamespace)
+    protected function getDefaultNamespace($rootNamespace): string
     {
         return $rootNamespace.'\Http\Controllers\Api';
     }
 
-    protected function buildClass($name)
+    protected function buildClass($name): string
     {
         $stub = $this->files->get($this->getStub());
 
         $version = $this->option('version') ?? '1.0';
-        $isDeprecated = $this->option('deprecated');
+        $isDeprecated = (bool) $this->option('deprecated');
         $sunsetDate = $this->option('sunset');
         $replacedBy = $this->option('replaced-by');
 
@@ -51,11 +59,11 @@ class MakeVersionedControllerCommand extends GeneratorCommand
     {
         $attributes = [];
 
-        if ($sunsetDate) {
+        if (is_string($sunsetDate) && !empty($sunsetDate)) {
             $attributes[] = "sunsetDate: '{$sunsetDate}'";
         }
 
-        if ($replacedBy) {
+        if (is_string($replacedBy) && !empty($replacedBy)) {
             $attributes[] = "replacedBy: '{$replacedBy}'";
         }
 
@@ -64,7 +72,7 @@ class MakeVersionedControllerCommand extends GeneratorCommand
         return "#[Deprecated({$attributeParams})]";
     }
 
-    private function getClassName($name): string
+    private function getClassName(string $name): string
     {
         return class_basename($name);
     }

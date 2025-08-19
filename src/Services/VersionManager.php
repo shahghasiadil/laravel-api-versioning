@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
 use Illuminate\Http\Request;
@@ -7,12 +9,9 @@ use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 
 class VersionManager
 {
-    private array $config;
-
-    public function __construct(array $config)
-    {
-        $this->config = $config;
-    }
+    public function __construct(
+        private readonly array $config
+    ) {}
 
     public function detectVersionFromRequest(Request $request): string
     {
@@ -20,7 +19,7 @@ class VersionManager
 
         // Try each detection method in order
         foreach ($this->config['detection_methods'] as $method => $config) {
-            if (! $config['enabled']) {
+            if (!$config['enabled']) {
                 continue;
             }
 
@@ -32,7 +31,7 @@ class VersionManager
                 default => null
             };
 
-            if ($version) {
+            if ($version !== null) {
                 break;
             }
         }
@@ -40,8 +39,12 @@ class VersionManager
         // Fall back to default version
         $version = $version ?? $this->config['default_version'];
 
-        if (! $this->isSupportedVersion($version)) {
-            throw new UnsupportedVersionException("API version '{$version}' is not supported.");
+        if (!$this->isSupportedVersion($version)) {
+            throw new UnsupportedVersionException(
+                message: "API version '{$version}' is not supported.",
+                supportedVersions: $this->getSupportedVersions(),
+                requestedVersion: $version
+            );
         }
 
         return $version;
@@ -62,7 +65,7 @@ class VersionManager
     private function extractVersionFromMediaType(Request $request, array $config): ?string
     {
         $accept = $request->header('Accept');
-        if (! $accept) {
+        if ($accept === null) {
             return null;
         }
 
@@ -76,11 +79,21 @@ class VersionManager
 
     public function isSupportedVersion(string $version): bool
     {
-        return in_array($version, $this->config['supported_versions']);
+        return in_array($version, $this->config['supported_versions'], true);
     }
 
     public function getSupportedVersions(): array
     {
         return $this->config['supported_versions'];
+    }
+
+    public function getDefaultVersion(): string
+    {
+        return $this->config['default_version'];
+    }
+
+    public function getDetectionMethods(): array
+    {
+        return $this->config['detection_methods'];
     }
 }

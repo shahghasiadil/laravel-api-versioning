@@ -1,29 +1,46 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ShahGhasiAdil\LaravelApiVersioning\Exceptions;
 
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Throwable;
 
 class UnsupportedVersionException extends Exception
 {
+    /**
+     * @param string[] $supportedVersions
+     */
     public function __construct(
         string $message = '',
         public readonly array $supportedVersions = [],
         public readonly ?string $requestedVersion = null,
         int $code = 0,
-        ?\Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
     }
 
-    public function render($request)
+    public function render(Request $request): JsonResponse
     {
-        return response()->json([
+        $data = [
             'error' => 'Unsupported API Version',
             'message' => $this->getMessage(),
-            'requested_version' => $this->requestedVersion,
             'supported_versions' => $this->supportedVersions,
-            'documentation' => config('api-versioning.documentation.base_url'),
-        ], 400);
+        ];
+
+        if ($this->requestedVersion !== null) {
+            $data['requested_version'] = $this->requestedVersion;
+        }
+
+        $documentationUrl = config('api-versioning.documentation.base_url');
+        if (is_string($documentationUrl)) {
+            $data['documentation'] = $documentationUrl;
+        }
+
+        return response()->json($data, 400);
     }
 }

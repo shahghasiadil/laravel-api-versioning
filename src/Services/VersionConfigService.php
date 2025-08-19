@@ -29,6 +29,7 @@ class VersionConfigService
 
     /**
      * Get inheritance chain for a version
+     *
      * @return string[]
      */
     public function getInheritanceChain(string $version): array
@@ -48,6 +49,7 @@ class VersionConfigService
 
     /**
      * Get all supported versions from config
+     *
      * @return string[]
      */
     public function getSupportedVersions(): array
@@ -67,6 +69,7 @@ class VersionConfigService
 
     /**
      * Get version mappings for debugging
+     *
      * @return array<string, string>
      */
     public function getVersionMappings(): array
@@ -76,6 +79,7 @@ class VersionConfigService
 
     /**
      * Get version inheritance mappings
+     *
      * @return array<string, string>
      */
     public function getVersionInheritance(): array

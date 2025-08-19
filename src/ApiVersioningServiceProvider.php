@@ -31,7 +31,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(VersionConfigService::class, function ($app): VersionConfigService {
-            return new VersionConfigService();
+            return new VersionConfigService;
         });
     }
 

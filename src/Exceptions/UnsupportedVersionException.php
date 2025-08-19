@@ -12,7 +12,7 @@ use Throwable;
 class UnsupportedVersionException extends Exception
 {
     /**
-     * @param string[] $supportedVersions
+     * @param  string[]  $supportedVersions
      */
     public function __construct(
         string $message = '',

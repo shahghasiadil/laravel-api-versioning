@@ -49,7 +49,7 @@ class ApiVersionsCommand extends Command
             $versionsStr = implode(', ', $allVersions);
 
             $versionFilter = $this->option('api-version');
-            if (is_string($versionFilter) && !in_array($versionFilter, $allVersions, true)) {
+            if (is_string($versionFilter) && ! in_array($versionFilter, $allVersions, true)) {
                 continue;
             }
 
@@ -86,6 +86,7 @@ class ApiVersionsCommand extends Command
 
         if ($rows === []) {
             $this->info('No matching routes found.');
+
             return self::SUCCESS;
         }
 

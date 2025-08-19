@@ -25,30 +25,35 @@ trait HasApiVersionAttributes
     protected function isVersionDeprecated(): bool
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo !== null ? $versionInfo->isDeprecated : false;
     }
 
     protected function isVersionNeutral(): bool
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo !== null ? $versionInfo->isNeutral : false;
     }
 
     protected function getDeprecationMessage(): ?string
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo?->deprecationMessage;
     }
 
     protected function getSunsetDate(): ?string
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo?->sunsetDate;
     }
 
     protected function getReplacedByVersion(): ?string
     {
         $versionInfo = $this->getVersionInfo();
+
         return $versionInfo?->replacedBy;
     }
 }

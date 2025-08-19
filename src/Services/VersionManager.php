@@ -19,7 +19,7 @@ class VersionManager
 
         // Try each detection method in order
         foreach ($this->config['detection_methods'] as $method => $config) {
-            if (!$config['enabled']) {
+            if (! $config['enabled']) {
                 continue;
             }
 
@@ -39,7 +39,7 @@ class VersionManager
         // Fall back to default version
         $version = $version ?? $this->config['default_version'];
 
-        if (!$this->isSupportedVersion($version)) {
+        if (! $this->isSupportedVersion($version)) {
             throw new UnsupportedVersionException(
                 message: "API version '{$version}' is not supported.",
                 supportedVersions: $this->getSupportedVersions(),

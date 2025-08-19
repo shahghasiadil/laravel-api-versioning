@@ -15,7 +15,7 @@ class ApiVersion
     public readonly array $versions;
 
     /**
-     * @param string|string[] $versions
+     * @param  string|string[]  $versions
      */
     public function __construct(string|array $versions)
     {

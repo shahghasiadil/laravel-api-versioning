@@ -18,7 +18,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/config/api-versioning.php',
+            __DIR__.'/../config/api-versioning.php',
             'api-versioning'
         );
 
@@ -38,7 +38,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->publishes([
-            __DIR__.'/config/api-versioning.php' => config_path('api-versioning.php'),
+            __DIR__.'/../config/api-versioning.php' => config_path('api-versioning.php'),
         ], 'config');
 
         $this->app['router']->aliasMiddleware('api.version', AttributeApiVersionMiddleware::class);

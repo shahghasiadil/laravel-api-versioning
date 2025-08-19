@@ -78,13 +78,13 @@ class ApiVersionsCommand extends Command
                 $methods,
                 $uri,
                 $action,
-                $versionsStr ?: 'None',
-                $deprecatedInfo ?: 'No',
-                $sunsetDate ?: '-',
+                $versionsStr !== '' ? $versionsStr : 'None',
+                $deprecatedInfo !== '' ? $deprecatedInfo : 'No',
+                $sunsetDate !== '' ? $sunsetDate : '-',
             ];
         }
 
-        if (empty($rows)) {
+        if ($rows === []) {
             $this->info('No matching routes found.');
             return self::SUCCESS;
         }

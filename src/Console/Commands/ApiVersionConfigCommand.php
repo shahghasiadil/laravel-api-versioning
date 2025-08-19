@@ -51,7 +51,7 @@ class ApiVersionConfigCommand extends Command
 
         // Show version mappings
         $mappings = $this->configService->getVersionMappings();
-        if (empty($mappings)) {
+        if ($mappings === []) {
             $this->warn('No version method mappings configured.');
             return;
         }
@@ -60,7 +60,7 @@ class ApiVersionConfigCommand extends Command
             ['Version', 'Method', 'Inheritance'],
             collect($mappings)->map(function (string $method, string $version): array {
                 $inheritance = implode(' → ', $this->configService->getInheritanceChain($version));
-                return [$version, $method, $inheritance ?: 'None'];
+                return [$version, $method, $inheritance !== '' ? $inheritance : 'None'];
             })->toArray()
         );
     }
@@ -72,7 +72,7 @@ class ApiVersionConfigCommand extends Command
             $method = $this->ask('Method name for version '.$version);
         }
 
-        if (!is_string($method) || empty($method)) {
+        if (!is_string($method) || $method === '') {
             $this->error('Method name is required.');
             return;
         }

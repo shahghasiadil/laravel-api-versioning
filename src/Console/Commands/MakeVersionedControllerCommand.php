@@ -59,15 +59,15 @@ class MakeVersionedControllerCommand extends GeneratorCommand
     {
         $attributes = [];
 
-        if (is_string($sunsetDate) && !empty($sunsetDate)) {
+        if (is_string($sunsetDate) && $sunsetDate !== '') {
             $attributes[] = "sunsetDate: '{$sunsetDate}'";
         }
 
-        if (is_string($replacedBy) && !empty($replacedBy)) {
+        if (is_string($replacedBy) && $replacedBy !== '') {
             $attributes[] = "replacedBy: '{$replacedBy}'";
         }
 
-        $attributeParams = empty($attributes) ? '' : implode(', ', $attributes);
+        $attributeParams = $attributes === [] ? '' : implode(', ', $attributes);
 
         return "#[Deprecated({$attributeParams})]";
     }

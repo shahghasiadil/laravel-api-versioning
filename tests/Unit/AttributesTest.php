@@ -48,13 +48,13 @@ describe('ApiVersion attribute', function () {
 
 describe('ApiVersionNeutral attribute', function () {
     test('creates neutral attribute successfully', function () {
-        $attribute = new ApiVersionNeutral();
+        $attribute = new ApiVersionNeutral;
 
         expect($attribute)->toBeInstanceOf(ApiVersionNeutral::class);
     });
 
     test('is a marker attribute with no properties', function () {
-        $attribute = new ApiVersionNeutral();
+        $attribute = new ApiVersionNeutral;
 
         $reflection = new ReflectionClass($attribute);
         $properties = $reflection->getProperties();
@@ -77,7 +77,7 @@ describe('Deprecated attribute', function () {
     });
 
     test('creates with minimal parameters', function () {
-        $attribute = new Deprecated();
+        $attribute = new Deprecated;
 
         expect($attribute->message)->toBeNull();
         expect($attribute->sunsetDate)->toBeNull();
@@ -205,7 +205,8 @@ describe('attribute usage on classes', function () {
 
 describe('attribute usage on methods', function () {
     test('MapToApiVersion can be applied to methods', function () {
-        $class = new class {
+        $class = new class
+        {
             #[MapToApiVersion(['2.0', '2.1'])]
             public function testMethod() {}
         };
@@ -221,7 +222,8 @@ describe('attribute usage on methods', function () {
     });
 
     test('multiple method attributes supported', function () {
-        $class = new class {
+        $class = new class
+        {
             #[MapToApiVersion('2.0')]
             #[Deprecated(message: 'Use newMethod instead')]
             public function oldMethod() {}

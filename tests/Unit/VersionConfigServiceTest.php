@@ -3,7 +3,7 @@
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionConfigService;
 
 beforeEach(function () {
-    $this->service = new VersionConfigService();
+    $this->service = new VersionConfigService;
 });
 
 describe('method resolution for versions', function () {
@@ -16,7 +16,7 @@ describe('method resolution for versions', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('1.0'))->toBe('toArrayV1');
         expect($service->getMethodForVersion('2.0'))->toBe('toArrayV2');
@@ -31,7 +31,7 @@ describe('method resolution for versions', function () {
             'api-versioning.default_method' => 'toArrayDefault',
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('3.0'))->toBe('toArrayDefault');
         expect($service->getMethodForVersion('unknown'))->toBe('toArrayDefault');
@@ -44,7 +44,7 @@ describe('method resolution for versions', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('2.0'))->toBe('toArrayDefault');
     });
@@ -55,7 +55,7 @@ describe('method resolution for versions', function () {
             'api-versioning.default_method' => 'customDefault',
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('1.0'))->toBe('customDefault');
     });
@@ -68,7 +68,7 @@ describe('method resolution for versions', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('1.0'))->toBe('customDefault');
     });
@@ -84,7 +84,7 @@ describe('version inheritance chain resolution', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getInheritanceChain('1.2'))->toBe(['1.1', '1.0']);
         expect($service->getInheritanceChain('1.1'))->toBe(['1.0']);
@@ -98,7 +98,7 @@ describe('version inheritance chain resolution', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getInheritanceChain('1.0'))->toBe([]);
         expect($service->getInheritanceChain('2.0'))->toBe([]);
@@ -114,7 +114,7 @@ describe('version inheritance chain resolution', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getInheritanceChain('1.4'))->toBe(['1.3', '1.2', '1.1', '1.0']);
         expect($service->getInheritanceChain('1.3'))->toBe(['1.2', '1.1', '1.0']);
@@ -126,7 +126,7 @@ describe('version inheritance chain resolution', function () {
             'api-versioning.version_inheritance' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getInheritanceChain('1.0'))->toBe([]);
         expect($service->getInheritanceChain('2.0'))->toBe([]);
@@ -137,7 +137,7 @@ describe('version inheritance chain resolution', function () {
             'api-versioning' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getInheritanceChain('1.0'))->toBe([]);
     });
@@ -150,7 +150,7 @@ describe('version inheritance chain resolution', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         // Should not cause infinite loop - will detect cycle and break
         $chain = $service->getInheritanceChain('1.1');
@@ -166,7 +166,7 @@ describe('supported versions management', function () {
             'api-versioning.supported_versions' => ['1.0', '1.1', '2.0', '2.1'],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getSupportedVersions())->toBe(['1.0', '1.1', '2.0', '2.1']);
     });
@@ -176,7 +176,7 @@ describe('supported versions management', function () {
             'api-versioning.supported_versions' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getSupportedVersions())->toBe([]);
     });
@@ -186,7 +186,7 @@ describe('supported versions management', function () {
             'api-versioning' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getSupportedVersions())->toBe([]);
     });
@@ -196,7 +196,7 @@ describe('supported versions management', function () {
             'api-versioning.supported_versions' => ['2.1', '1.0', '2.0', '1.1'],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getSupportedVersions())->toBe(['2.1', '1.0', '2.0', '1.1']);
     });
@@ -211,7 +211,7 @@ describe('version mapping validation', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->hasVersionMapping('1.0'))->toBeTrue();
         expect($service->hasVersionMapping('2.0'))->toBeTrue();
@@ -225,7 +225,7 @@ describe('version mapping validation', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->hasVersionMapping('2.0'))->toBeFalse();
         expect($service->hasVersionMapping('unknown'))->toBeFalse();
@@ -236,7 +236,7 @@ describe('version mapping validation', function () {
             'api-versioning.version_method_mapping' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->hasVersionMapping('1.0'))->toBeFalse();
     });
@@ -246,7 +246,7 @@ describe('version mapping validation', function () {
             'api-versioning' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->hasVersionMapping('1.0'))->toBeFalse();
     });
@@ -264,7 +264,7 @@ describe('configuration debugging and inspection', function () {
             'api-versioning.version_method_mapping' => $mappings,
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getVersionMappings())->toBe($mappings);
     });
@@ -274,7 +274,7 @@ describe('configuration debugging and inspection', function () {
             'api-versioning.version_method_mapping' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getVersionMappings())->toBe([]);
     });
@@ -290,7 +290,7 @@ describe('configuration debugging and inspection', function () {
             'api-versioning.version_inheritance' => $inheritance,
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getVersionInheritance())->toBe($inheritance);
     });
@@ -300,7 +300,7 @@ describe('configuration debugging and inspection', function () {
             'api-versioning.version_inheritance' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getVersionInheritance())->toBe([]);
     });
@@ -310,7 +310,7 @@ describe('configuration debugging and inspection', function () {
             'api-versioning.default_method' => 'customDefaultMethod',
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getDefaultMethod())->toBe('customDefaultMethod');
     });
@@ -320,7 +320,7 @@ describe('configuration debugging and inspection', function () {
             'api-versioning' => [],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getDefaultMethod())->toBe('toArrayDefault');
     });
@@ -330,7 +330,7 @@ describe('edge cases and error handling', function () {
     test('handles null configuration gracefully', function () {
         config(['api-versioning' => null]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('1.0'))->toBe('toArrayDefault');
         expect($service->getInheritanceChain('1.0'))->toBe([]);
@@ -352,7 +352,7 @@ describe('edge cases and error handling', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('v1.0-beta'))->toBe('toArrayBeta');
         expect($service->getMethodForVersion('v2.0@special'))->toBe('toArraySpecial');
@@ -370,7 +370,7 @@ describe('edge cases and error handling', function () {
             ],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion(''))->toBe('toArrayEmpty');
         expect($service->hasVersionMapping(''))->toBeTrue();
@@ -386,7 +386,7 @@ describe('edge cases and error handling', function () {
             'api-versioning.supported_versions' => ['1', '2', '3'],
         ]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('1'))->toBe('toArrayV1');
         expect($service->getSupportedVersions())->toBe(['1', '2', '3']);
@@ -396,7 +396,7 @@ describe('edge cases and error handling', function () {
     test('handles completely missing api-versioning config', function () {
         config(['api-versioning' => null]);
 
-        $service = new VersionConfigService();
+        $service = new VersionConfigService;
 
         expect($service->getMethodForVersion('1.0'))->toBe('toArrayDefault');
         expect($service->getInheritanceChain('1.0'))->toBe([]);

@@ -24,7 +24,7 @@ describe('successful request handling', function () {
     test('processes request with valid version and adds headers', function () {
         $request = Request::create('/api/users');
         $route = Mockery::mock(Route::class);
-        $request->setRouteResolver(fn() => $route);
+        $request->setRouteResolver(fn () => $route);
 
         $versionInfo = new VersionInfo(
             version: '2.0',
@@ -56,7 +56,7 @@ describe('successful request handling', function () {
 
         $response = new Response('{"data": "test"}', 200, ['Content-Type' => 'application/json']);
 
-        $result = $this->middleware->handle($request, fn() => $response);
+        $result = $this->middleware->handle($request, fn () => $response);
 
         expect($result)->toBe($response);
         expect($request->attributes->get('api_version_info'))->toBe($versionInfo);
@@ -69,7 +69,7 @@ describe('successful request handling', function () {
     test('adds deprecation headers for deprecated version', function () {
         $request = Request::create('/api/users');
         $route = Mockery::mock(Route::class);
-        $request->setRouteResolver(fn() => $route);
+        $request->setRouteResolver(fn () => $route);
 
         $versionInfo = new VersionInfo(
             version: '1.0',
@@ -101,7 +101,7 @@ describe('successful request handling', function () {
 
         $response = new Response('{"data": "test"}');
 
-        $result = $this->middleware->handle($request, fn() => $response);
+        $result = $this->middleware->handle($request, fn () => $response);
 
         expect($result->headers->get('X-API-Version'))->toBe('1.0');
         expect($result->headers->get('X-API-Deprecated'))->toBe('true');
@@ -113,7 +113,7 @@ describe('successful request handling', function () {
     test('handles partial deprecation information', function () {
         $request = Request::create('/api/users');
         $route = Mockery::mock(Route::class);
-        $request->setRouteResolver(fn() => $route);
+        $request->setRouteResolver(fn () => $route);
 
         $versionInfo = new VersionInfo(
             version: '1.0',
@@ -136,9 +136,9 @@ describe('successful request handling', function () {
         $this->attributeResolver->shouldReceive('getAllVersionsForRoute')
             ->andReturn(['1.0']);
 
-        $response = new Response();
+        $response = new Response;
 
-        $result = $this->middleware->handle($request, fn() => $response);
+        $result = $this->middleware->handle($request, fn () => $response);
 
         expect($result->headers->get('X-API-Deprecated'))->toBe('true');
         expect($result->headers->get('X-API-Sunset'))->toBe('2025-06-30');
@@ -151,7 +151,7 @@ describe('error handling', function () {
     test('returns error response for unsupported version', function () {
         $request = Request::create('/api/users');
         $route = Mockery::mock(Route::class);
-        $request->setRouteResolver(fn() => $route);
+        $request->setRouteResolver(fn () => $route);
 
         $this->versionManager->shouldReceive('detectVersionFromRequest')
             ->with($request)
@@ -172,7 +172,7 @@ describe('error handling', function () {
             ->once()
             ->andReturn(['1.0', '2.0', '2.1']);
 
-        $result = $this->middleware->handle($request, fn() => new Response());
+        $result = $this->middleware->handle($request, fn () => new Response);
 
         expect($result)->toBeInstanceOf(JsonResponse::class);
         expect($result->getStatusCode())->toBe(400);
@@ -188,7 +188,7 @@ describe('error handling', function () {
     test('handles version manager exception', function () {
         $request = Request::create('/api/users');
         $route = Mockery::mock(Route::class);
-        $request->setRouteResolver(fn() => $route);
+        $request->setRouteResolver(fn () => $route);
 
         $exception = new UnsupportedVersionException(
             message: "API version '4.0' is not supported.",
@@ -205,7 +205,7 @@ describe('error handling', function () {
             ->once()
             ->andReturn(['1.0', '2.0']);
 
-        $result = $this->middleware->handle($request, fn() => new Response());
+        $result = $this->middleware->handle($request, fn () => new Response);
 
         expect($result)->toBeInstanceOf(JsonResponse::class);
         expect($result->getStatusCode())->toBe(400);
@@ -219,7 +219,7 @@ describe('error handling', function () {
 
     test('handles missing route', function () {
         $request = Request::create('/api/users');
-        $request->setRouteResolver(fn() => null);
+        $request->setRouteResolver(fn () => null);
 
         $this->versionManager->shouldReceive('detectVersionFromRequest')
             ->with($request)
@@ -230,7 +230,7 @@ describe('error handling', function () {
             ->once()
             ->andReturn(['1.0', '2.0']);
 
-        $result = $this->middleware->handle($request, fn() => new Response());
+        $result = $this->middleware->handle($request, fn () => new Response);
 
         expect($result)->toBeInstanceOf(JsonResponse::class);
         expect($result->getStatusCode())->toBe(400);
@@ -247,7 +247,7 @@ describe('header management', function () {
 
         $request = Request::create('/api/users');
         $route = Mockery::mock(Route::class);
-        $request->setRouteResolver(fn() => $route);
+        $request->setRouteResolver(fn () => $route);
 
         $this->versionManager->shouldReceive('detectVersionFromRequest')
             ->andReturn('3.0');
@@ -261,7 +261,7 @@ describe('header management', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $result = $this->middleware->handle($request, fn() => new Response());
+        $result = $this->middleware->handle($request, fn () => new Response);
 
         $data = $result->getData(true);
         expect($data['documentation'])->toBe('https://docs.example.com/api');
@@ -270,7 +270,7 @@ describe('header management', function () {
     test('omits route versions header when no versions available', function () {
         $request = Request::create('/api/users');
         $route = Mockery::mock(Route::class);
-        $request->setRouteResolver(fn() => $route);
+        $request->setRouteResolver(fn () => $route);
 
         $versionInfo = new VersionInfo(
             version: '2.0',
@@ -290,9 +290,9 @@ describe('header management', function () {
         $this->attributeResolver->shouldReceive('getAllVersionsForRoute')
             ->andReturn([]);
 
-        $response = new Response();
+        $response = new Response;
 
-        $result = $this->middleware->handle($request, fn() => $response);
+        $result = $this->middleware->handle($request, fn () => $response);
 
         expect($result->headers->has('X-API-Route-Versions'))->toBeFalse();
     });

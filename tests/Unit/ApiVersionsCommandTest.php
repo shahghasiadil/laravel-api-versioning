@@ -22,7 +22,7 @@ afterEach(function () {
 
 describe('route filtering and display', function () {
     test('displays api routes with version information', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         // Create mock routes
         $route1 = Mockery::mock(Route::class);
@@ -64,7 +64,7 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0', '2.1']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -81,7 +81,7 @@ describe('route filtering and display', function () {
     });
 
     test('filters routes by pattern', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $route1 = Mockery::mock(Route::class);
         $route1->shouldReceive('uri')->andReturn('api/users');
@@ -127,7 +127,7 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -145,7 +145,7 @@ describe('route filtering and display', function () {
     });
 
     test('filters routes by api version', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $route1 = Mockery::mock(Route::class);
         $route1->shouldReceive('uri')->andReturn('api/users');
@@ -169,7 +169,7 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -186,7 +186,7 @@ describe('route filtering and display', function () {
     });
 
     test('shows only deprecated endpoints when flag is set', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $route1 = Mockery::mock(Route::class);
         $route1->shouldReceive('uri')->andReturn('api/users');
@@ -221,7 +221,7 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -240,7 +240,7 @@ describe('route filtering and display', function () {
 
 describe('deprecation information handling', function () {
     test('displays deprecation information correctly', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $route = Mockery::mock(Route::class);
         $route->shouldReceive('uri')->andReturn('api/users');
@@ -282,7 +282,7 @@ describe('deprecation information handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -299,7 +299,7 @@ describe('deprecation information handling', function () {
     });
 
     test('handles routes with no versions', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $route = Mockery::mock(Route::class);
         $route->shouldReceive('uri')->andReturn('api/health');
@@ -320,7 +320,7 @@ describe('deprecation information handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -339,7 +339,7 @@ describe('deprecation information handling', function () {
 
 describe('error handling', function () {
     test('handles version resolution exceptions gracefully', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $route = Mockery::mock(Route::class);
         $route->shouldReceive('uri')->andReturn('api/users');
@@ -365,7 +365,7 @@ describe('error handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -382,14 +382,14 @@ describe('error handling', function () {
     });
 
     test('displays message when no routes found', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $this->router->shouldReceive('getRoutes')->andReturn($routes);
 
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output
@@ -407,7 +407,7 @@ describe('error handling', function () {
     });
 
     test('displays message when filtered routes not found', function () {
-        $routes = new RouteCollection();
+        $routes = new RouteCollection;
 
         $route = Mockery::mock(Route::class);
         $route->shouldReceive('uri')->andReturn('api/posts');
@@ -423,7 +423,7 @@ describe('error handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
         $style = new \Illuminate\Console\OutputStyle(
             new \Symfony\Component\Console\Input\ArrayInput([]),
             $output

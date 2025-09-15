@@ -177,7 +177,7 @@ describe('version validation', function () {
         $request = Request::create('/api/users');
         $request->headers->set('X-API-Version', '3.0');
 
-        expect(fn() => $this->versionManager->detectVersionFromRequest($request))
+        expect(fn () => $this->versionManager->detectVersionFromRequest($request))
             ->toThrow(UnsupportedVersionException::class, "API version '3.0' is not supported.");
     });
 

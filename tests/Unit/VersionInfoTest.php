@@ -150,7 +150,7 @@ describe('readonly properties', function () {
     test('properties are readonly and cannot be modified', function () {
         $versionInfo = new VersionInfo('1.0');
 
-        expect(fn() => $versionInfo->version = '2.0')
+        expect(fn () => $versionInfo->version = '2.0')
             ->toThrow(Error::class);
     });
 

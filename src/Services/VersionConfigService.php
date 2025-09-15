@@ -10,7 +10,8 @@ class VersionConfigService
 
     public function __construct()
     {
-        $this->config = config('api-versioning', []);
+        $config = config('api-versioning', []);
+        $this->config = is_array($config) ? $config : [];
     }
 
     /**
@@ -35,11 +36,24 @@ class VersionConfigService
     public function getInheritanceChain(string $version): array
     {
         $chain = [];
+        $visited = [];
         $inheritance = $this->config['version_inheritance'] ?? [];
         $currentVersion = $version;
 
         while (isset($inheritance[$currentVersion])) {
+            // Prevent infinite loops by checking if we've seen this version before
+            if (in_array($currentVersion, $visited, true)) {
+                break;
+            }
+
+            $visited[] = $currentVersion;
             $parentVersion = $inheritance[$currentVersion];
+
+            // Also check if the parent would create a cycle
+            if (in_array($parentVersion, $visited, true)) {
+                break;
+            }
+
             $chain[] = $parentVersion;
             $currentVersion = $parentVersion;
         }

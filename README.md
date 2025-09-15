@@ -21,7 +21,7 @@ A powerful and elegant attribute-based API versioning solution for Laravel appli
 ## Requirements
 
 - PHP 8.2+
-- Laravel 12.0+
+- Laravel 10.0|11.0|12.0+
 
 ## Installation
 
@@ -405,45 +405,39 @@ php artisan api:version-config --add-version=3.0 --method=toArrayV3
 
 ## Testing
 
-The package includes comprehensive testing utilities:
+The package includes comprehensive testing utilities built with **Pest PHP**:
 
 ```php
-use ShahGhasiAdil\LaravelApiVersioning\Testing\ApiVersionTestCase;
+// tests/Feature/UserControllerTest.php
 
-class UserControllerTest extends ApiVersionTestCase
-{
-    public function test_user_endpoint_v1()
-    {
-        $response = $this->getWithVersion('/api/users', '1.0');
-        
-        $response->assertOk();
-        $this->assertApiVersion($response, '1.0');
-        $this->assertApiVersionNotDeprecated($response);
-    }
+test('user endpoint v1', function () {
+    $response = getWithVersion('/api/users', '1.0');
 
-    public function test_deprecated_endpoint()
-    {
-        $response = $this->getWithVersion('/api/v1/users', '1.0');
-        
-        $this->assertApiVersionDeprecated($response, '2025-12-31');
-        $this->assertDeprecationMessage($response, 'Use v2.0 instead');
-        $this->assertReplacedBy($response, '2.0');
-    }
+    $response->assertOk();
+    assertApiVersion($response, '1.0');
+    assertApiVersionNotDeprecated($response);
+});
 
-    public function test_unsupported_version()
-    {
-        $response = $this->getWithVersion('/api/users', '3.0');
-        
-        $response->assertStatus(400);
-        $response->assertJson([
-            'error' => 'Unsupported API Version',
-            'requested_version' => '3.0',
-        ]);
-    }
-}
+test('deprecated endpoint', function () {
+    $response = getWithVersion('/api/v1/users', '1.0');
+
+    assertApiVersionDeprecated($response, '2025-12-31');
+    assertDeprecationMessage($response, 'Use v2.0 instead');
+    assertReplacedBy($response, '2.0');
+});
+
+test('unsupported version', function () {
+    $response = getWithVersion('/api/users', '3.0');
+
+    $response->assertStatus(400);
+    $response->assertJson([
+        'error' => 'Unsupported API Version',
+        'requested_version' => '3.0',
+    ]);
+});
 ```
 
-### Available Test Methods
+### Available Test Helpers
 
 - `getWithVersion($uri, $version, $headers = [])`
 - `getWithVersionQuery($uri, $version, $headers = [])`
@@ -457,6 +451,22 @@ class UserControllerTest extends ApiVersionTestCase
 - `assertRouteVersions($response, $versions)`
 - `assertDeprecationMessage($response, $message)`
 - `assertReplacedBy($response, $version)`
+
+### Running Tests
+
+```bash
+# Run all tests
+composer test
+
+# Run tests with coverage
+composer test-coverage
+
+# Run specific test file
+./vendor/bin/pest tests/Feature/AttributeVersioningTest.php
+
+# Run specific test
+./vendor/bin/pest --filter="user endpoint v1"
+```
 
 ## Response Headers
 
@@ -743,14 +753,13 @@ protected function toArrayV11(Request $request): array
 Test all supported versions thoroughly:
 
 ```php
-public function test_all_supported_versions()
-{
+test('all supported versions', function () {
     foreach (['1.0', '1.1', '2.0'] as $version) {
-        $response = $this->getWithVersion('/api/users', $version);
+        $response = getWithVersion('/api/users', $version);
         $response->assertOk();
-        $this->assertApiVersion($response, $version);
+        assertApiVersion($response, $version);
     }
-}
+});
 ```
 
 ## Error Responses
@@ -818,9 +827,9 @@ curl -H "X-API-Version: 3.0" https://api.example.com/users
 Contributions are welcome! Please ensure you:
 
 1. Follow PSR-12 coding standards
-2. Add tests for new features
+2. Add Pest tests for new features
 3. Update documentation for changes
-4. Run the test suite: `composer test`
+4. Run the test suite: `composer test` (uses Pest)
 5. Run static analysis: `composer analyse`
 6. Format code: `composer format`
 

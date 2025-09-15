@@ -37,7 +37,7 @@ class UnsupportedVersionException extends Exception
         }
 
         $documentationUrl = config('api-versioning.documentation.base_url');
-        if (is_string($documentationUrl)) {
+        if (is_string($documentationUrl) && $documentationUrl !== '') {
             $data['documentation'] = $documentationUrl;
         }
 

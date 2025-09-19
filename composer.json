@@ -1,7 +1,12 @@
 {
     "name": "shahghasiadil/laravel-api-versioning",
-    "description": "Attribute-based API versioning for Laravel with strict type safety",
-    "keywords": ["laravel", "api", "versioning", "attributes", "php8", "rest-api", "api-management", "type-safety"],
+    "description": "Elegant attribute-based API versioning solution for Laravel applications with built-in deprecation management and version inheritance",
+    "keywords": [
+        "laravel", "api", "versioning", "attributes", "php8", "rest-api", "api-management",
+        "type-safety", "deprecation", "middleware", "json-resources", "version-management",
+        "version-inheritance", "sunset-dates", "api-lifecycle", "backward-compatibility",
+        "header-versioning", "query-versioning", "path-versioning", "artisan-commands"
+    ],
     "license": "MIT",
     "authors": [
         {

@@ -6,7 +6,7 @@
 
 A powerful and elegant attribute-based API versioning solution for Laravel applications with strict type safety and comprehensive deprecation management.
 
-## Features
+## ✨ Features
 
 - 🎯 **Attribute-based versioning** - Use PHP 8+ attributes to define API versions
 - 🛡️ **Type-safe** - Full type annotations and strict type checking
@@ -14,286 +14,128 @@ A powerful and elegant attribute-based API versioning solution for Laravel appli
 - 📦 **Resource versioning** - Smart version-aware JSON resources
 - 🚫 **Deprecation support** - Built-in deprecation warnings and sunset dates
 - 🔗 **Version inheritance** - Fallback chains for backward compatibility
-- 🧪 **Testing utilities** - Comprehensive test helpers
-- 📊 **Route inspection** - Commands to analyze your API versioning
+- 🧪 **Testing utilities** - Comprehensive test helpers with Pest PHP
+- 📊 **Artisan commands** - Route inspection and controller generation
 - ⚡ **Performance optimized** - Minimal overhead with efficient resolution
 
-## Requirements
+## 📋 Requirements
 
 - PHP 8.2+
 - Laravel 10.0|11.0|12.0+
 
-## Installation
-
-Install the package via Composer:
+## 🚀 Installation
 
 ```bash
 composer require shahghasiadil/laravel-api-versioning
 ```
 
-Publish the configuration file:
-
 ```bash
 php artisan vendor:publish --provider="ShahGhasiAdil\LaravelApiVersioning\ApiVersioningServiceProvider" --tag="config"
 ```
 
-## Quick Start
+## ⚡ Quick Start
 
-### 1. Configure Your API Versions
+### 1. Configure API Versions
 
-Update `config/api-versioning.php`:
+Edit `config/api-versioning.php`:
 
 ```php
 return [
     'default_version' => '2.0',
     'supported_versions' => ['1.0', '1.1', '2.0', '2.1'],
     'detection_methods' => [
-        'header' => [
-            'enabled' => true,
-            'header_name' => 'X-API-Version',
-        ],
-        'query' => [
-            'enabled' => true,
-            'parameter_name' => 'api-version',
-        ],
-        'path' => [
-            'enabled' => true,
-            'prefix' => 'api/v',
-        ],
+        'header' => ['enabled' => true, 'header_name' => 'X-API-Version'],
+        'query' => ['enabled' => true, 'parameter_name' => 'api-version'],
+        'path' => ['enabled' => true, 'prefix' => 'api/v'],
     ],
     'version_method_mapping' => [
-        '1.0' => 'toArrayV1',
-        '1.1' => 'toArrayV11',
-        '2.0' => 'toArrayV2',
-        '2.1' => 'toArrayV21',
+        '1.0' => 'toArrayV1', '2.0' => 'toArrayV2', '2.1' => 'toArrayV21',
     ],
-    'version_inheritance' => [
-        '1.1' => '1.0',  // v1.1 falls back to v1.0
-        '2.1' => '2.0',  // v2.1 falls back to v2.0
-    ],
+    'version_inheritance' => ['1.1' => '1.0', '2.1' => '2.0'],
 ];
 ```
 
-### 2. Add Middleware to Routes
+### 2. Apply Middleware
 
 ```php
-// routes/api.php - Using middleware alias
+// routes/api.php - Route Groups (Recommended)
 Route::middleware('api.version')->group(function () {
     Route::apiResource('users', UserController::class);
 });
 
-// Alternative: Using direct middleware class
+// Direct Middleware Class
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
-
 Route::middleware(AttributeApiVersionMiddleware::class)->group(function () {
-    Route::apiResource('users', UserController::class);
+    Route::get('users', [UserController::class, 'index']);
 });
 
-// For specific routes only
-Route::apiResource('users', UserController::class)->middleware('api.version');
+// Individual Routes
+Route::get('users/{user}', [UserController::class, 'show'])->middleware('api.version');
+
+// Global Middleware (Laravel 11+)
+// bootstrap/app.php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->api(append: [AttributeApiVersionMiddleware::class]);
+})
 ```
 
-### 3. Create Versioned Controllers
-
-Use the built-in command to generate versioned controllers:
+### 3. Create Controllers with Attributes
 
 ```bash
-# Create a basic versioned controller
 php artisan make:versioned-controller UserController --api-version=2.0
-
-# Create a deprecated controller
-php artisan make:versioned-controller V1UserController --api-version=1.0 --deprecated --sunset=2025-12-31 --replaced-by=2.0
 ```
 
-Or create manually with attributes:
-
 ```php
-<?php
-
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\{ApiVersion, Deprecated, MapToApiVersion};
 use ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
 
+// Controller-level versioning
 #[ApiVersion(['2.0', '2.1'])]
 class UserController extends Controller
 {
     use HasApiVersionAttributes;
 
+    // Available in all controller versions (2.0, 2.1)
     public function index(): JsonResponse
     {
         return response()->json([
             'data' => User::all(),
             'version' => $this->getCurrentApiVersion(),
-            'deprecated' => $this->isVersionDeprecated(),
         ]);
     }
-}
-```
 
-### 4. Create Versioned Resources
-
-```php
-<?php
-
-use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedJsonResource;
-
-class UserResource extends VersionedJsonResource
-{
-    protected function toArrayV1(Request $request): array
+    // Method-specific versioning
+    #[MapToApiVersion(['2.1'])]
+    public function store(Request $request): JsonResponse
     {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-        ];
+        // Only available in v2.1
+        return response()->json(['message' => 'User created']);
     }
 
-    protected function toArrayV2(Request $request): array
+    // Deprecated method
+    #[Deprecated(message: 'Use store() instead', replacedBy: '2.1')]
+    #[MapToApiVersion(['2.0'])]
+    public function create(Request $request): JsonResponse
     {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'email' => $this->email,
-            'created_at' => $this->created_at->toISOString(),
-        ];
-    }
-
-    protected function toArrayDefault(Request $request): array
-    {
-        return $this->toArrayV2($request);
+        // Only available in v2.0, deprecated
+        return $this->store($request);
     }
 }
-```
 
-## Middleware Configuration
-
-The package registers the middleware alias automatically. You have several options for applying it:
-
-### Option 1: Route Group (Recommended)
-```php
-// routes/api.php
-Route::middleware('api.version')->group(function () {
-    Route::apiResource('users', UserController::class);
-    Route::apiResource('posts', PostController::class);
-});
-```
-
-### Option 2: Direct Middleware Class
-```php
-// routes/api.php
-use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
-
-Route::middleware(AttributeApiVersionMiddleware::class)->group(function () {
-    Route::apiResource('users', UserController::class);
-});
-```
-
-### Option 3: Global Middleware (Laravel 12)
-```php
-// bootstrap/app.php
-use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
-
-return Application::configure(basePath: dirname(__DIR__))
-    ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
-        health: '/up',
-        apiMiddleware: [
-            'throttle:api',
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            AttributeApiVersionMiddleware::class, // Add here for all API routes
-        ],
-    );
-```
-
-### Option 4: Individual Routes
-```php
-Route::middleware('api.version')->get('/users', [UserController::class, 'index']);
-Route::post('/users', [UserController::class, 'store'])->middleware('api.version');
-```
-
-## Usage
-
-### API Version Detection
-
-The package supports multiple ways to specify API versions:
-
-#### Header-based (Recommended)
-```bash
-curl -H "X-API-Version: 2.0" https://api.example.com/users
-```
-
-#### Query Parameter
-```bash
-curl https://api.example.com/users?api-version=2.0
-```
-
-#### Path-based
-```bash
-curl https://api.example.com/api/v2.0/users
-```
-
-#### Media Type
-```bash
-curl -H "Accept: application/vnd.api+json;version=2.0" https://api.example.com/users
-```
-
-### Attributes Reference
-
-#### `#[ApiVersion]` - Define Supported Versions
-
-```php
-// Single version
-#[ApiVersion('2.0')]
-class UserController extends Controller {}
-
-// Multiple versions
-#[ApiVersion(['1.0', '1.1', '2.0'])]
-class UserController extends Controller {}
-
-// Method-specific versions
-class UserController extends Controller
-{
-    #[ApiVersion('2.0')]
-    public function store() {}
-}
-```
-
-#### `#[ApiVersionNeutral]` - Version-Independent Endpoints
-
-```php
+// Version-neutral endpoints (work with any version)
 #[ApiVersionNeutral]
 class HealthController extends Controller
 {
-    public function check() {} // Works with any version
+    use HasApiVersionAttributes;
+
+    public function check(): JsonResponse
+    {
+        return response()->json(['status' => 'healthy']);
+    }
 }
 ```
 
-#### `#[Deprecated]` - Mark as Deprecated
-
-```php
-#[ApiVersion('1.0')]
-#[Deprecated(
-    message: 'This endpoint is deprecated. Use v2.0 instead.',
-    sunsetDate: '2025-12-31',
-    replacedBy: '2.0'
-)]
-class V1UserController extends Controller {}
-```
-
-#### `#[MapToApiVersion]` - Method-Specific Mapping
-
-```php
-class UserController extends Controller
-{
-    #[MapToApiVersion(['1.1', '2.0'])]
-    public function show() {} // Only available in v1.1 and v2.0
-}
-```
-
-### Resource Versioning
-
-#### Method-based Versioning
+### 4. Create Resources
 
 ```php
 class UserResource extends VersionedJsonResource
@@ -309,40 +151,92 @@ class UserResource extends VersionedJsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'profile' => ['avatar' => $this->avatar_url],
+            'created_at' => $this->created_at->toISOString(),
         ];
     }
-
-    protected function toArrayDefault(Request $request): array
-    {
-        return $this->toArrayV2($request);
-    }
 }
 ```
 
-#### Dynamic Configuration Versioning
+## 🔧 Usage
 
+### Version Detection
+
+```bash
+# Header (Recommended)
+curl -H "X-API-Version: 2.0" https://api.example.com/users
+
+# Query Parameter
+curl https://api.example.com/users?api-version=2.0
+
+# Path
+curl https://api.example.com/api/v2.0/users
+
+# Media Type
+curl -H "Accept: application/vnd.api+json;version=2.0" https://api.example.com/users
+```
+
+### Attributes Usage
+
+#### Controller-Level Attributes
 ```php
-class UserResource extends VersionedJsonResource
-{
-    protected array $versionConfigs = [
-        '1.0' => ['id', 'name'],
-        '2.0' => ['id', 'name', 'email', 'profile'],
-    ];
+// Single version support
+#[ApiVersion('2.0')]
+class V2UserController extends Controller {}
 
-    protected function toArrayDefault(Request $request): array
-    {
-        $version = $this->getCurrentApiVersion();
-        $config = $this->versionConfigs[$version] ?? $this->versionConfigs['2.0'];
-        
-        return $this->only($config);
-    }
+// Multiple versions support
+#[ApiVersion(['1.0', '1.1', '2.0'])]
+class UserController extends Controller {}
+
+// Version-neutral (works with any API version)
+#[ApiVersionNeutral]
+class HealthController extends Controller {}
+
+// Deprecated controller
+#[ApiVersion('1.0')]
+#[Deprecated(
+    message: 'This controller is deprecated. Use v2.0 UserController instead.',
+    sunsetDate: '2025-12-31',
+    replacedBy: '2.0'
+)]
+class V1UserController extends Controller {}
+```
+
+#### Method-Level Attributes
+```php
+#[ApiVersion(['1.0', '2.0', '2.1'])]
+class UserController extends Controller
+{
+    // Available in all controller versions
+    public function index() {}
+
+    // Only available in specific versions
+    #[MapToApiVersion(['2.0', '2.1'])]
+    public function store() {}
+
+    // Version-specific method with deprecation
+    #[MapToApiVersion(['1.0'])]
+    #[Deprecated(message: 'Use store() method instead', replacedBy: '2.0')]
+    public function create() {}
+
+    // Advanced features only in latest version
+    #[MapToApiVersion(['2.1'])]
+    public function bulkUpdate() {}
 }
 ```
 
-### Helper Trait Methods
+#### Combining Attributes
+```php
+#[ApiVersion(['1.0', '2.0'])]
+class PostController extends Controller
+{
+    // Method overrides controller version restriction
+    #[MapToApiVersion(['2.0'])]
+    #[Deprecated(sunsetDate: '2025-06-30', replacedBy: '2.1')]
+    public function legacyUpdate() {}
+}
+```
 
-The `HasApiVersionAttributes` trait provides useful methods:
+### Helper Methods
 
 ```php
 class UserController extends Controller
@@ -351,140 +245,68 @@ class UserController extends Controller
 
     public function index()
     {
-        $version = $this->getCurrentApiVersion();          // '2.0'
-        $isDeprecated = $this->isVersionDeprecated();      // false
-        $isNeutral = $this->isVersionNeutral();            // false
-        $message = $this->getDeprecationMessage();         // null
-        $sunset = $this->getSunsetDate();                  // null
-        $replacedBy = $this->getReplacedByVersion();       // null
+        $version = $this->getCurrentApiVersion();      // '2.0'
+        $isDeprecated = $this->isVersionDeprecated();  // false
+        $message = $this->getDeprecationMessage();     // null
+        $sunset = $this->getSunsetDate();              // null
     }
 }
 ```
 
-## Commands
-
-### Generate Versioned Controllers
+## 🛠️ Artisan Commands
 
 ```bash
-# Basic controller
+# Generate controllers
 php artisan make:versioned-controller UserController --api-version=2.0
+php artisan make:versioned-controller V1UserController --api-version=1.0 --deprecated
 
-# Deprecated controller
-php artisan make:versioned-controller V1UserController \
-    --api-version=1.0 \
-    --deprecated \
-    --sunset=2025-12-31 \
-    --replaced-by=2.0
+# Inspect API versions
+php artisan api:versions                    # All routes
+php artisan api:versions --route=users     # Filter by route
+php artisan api:versions --deprecated      # Deprecated only
+
+# Configuration management
+php artisan api:version-config --show      # Show config
 ```
 
-### Inspect API Versions
-
-```bash
-# Show all routes with version info
-php artisan api:versions
-
-# Filter by route pattern
-php artisan api:versions --route=users
-
-# Show only deprecated endpoints
-php artisan api:versions --deprecated
-
-# Filter by specific version
-php artisan api:versions --api-version=2.0
-```
-
-### Manage Configuration
-
-```bash
-# Show current configuration
-php artisan api:version-config --show
-
-# Add new version mapping (guidance only)
-php artisan api:version-config --add-version=3.0 --method=toArrayV3
-```
-
-## Testing
-
-The package includes comprehensive testing utilities built with **Pest PHP**:
+## 🧪 Testing (Pest PHP)
 
 ```php
-// tests/Feature/UserControllerTest.php
-
-test('user endpoint v1', function () {
-    $response = getWithVersion('/api/users', '1.0');
-
+test('user endpoint versions', function () {
+    $response = getWithVersion('/api/users', '2.0');
     $response->assertOk();
-    assertApiVersion($response, '1.0');
-    assertApiVersionNotDeprecated($response);
+    assertApiVersion($response, '2.0');
 });
 
-test('deprecated endpoint', function () {
-    $response = getWithVersion('/api/v1/users', '1.0');
-
-    assertApiVersionDeprecated($response, '2025-12-31');
-    assertDeprecationMessage($response, 'Use v2.0 instead');
+test('deprecated endpoints', function () {
+    $response = getWithVersion('/api/users', '1.0');
+    assertApiVersionDeprecated($response);
     assertReplacedBy($response, '2.0');
 });
-
-test('unsupported version', function () {
-    $response = getWithVersion('/api/users', '3.0');
-
-    $response->assertStatus(400);
-    $response->assertJson([
-        'error' => 'Unsupported API Version',
-        'requested_version' => '3.0',
-    ]);
-});
 ```
 
-### Available Test Helpers
-
-- `getWithVersion($uri, $version, $headers = [])`
-- `getWithVersionQuery($uri, $version, $headers = [])`
-- `postWithVersion($uri, $data, $version, $headers = [])`
-- `putWithVersion($uri, $data, $version, $headers = [])`
-- `deleteWithVersion($uri, $version, $headers = [])`
-- `assertApiVersion($response, $expectedVersion)`
-- `assertApiVersionDeprecated($response, $sunsetDate = null)`
-- `assertApiVersionNotDeprecated($response)`
-- `assertSupportedVersions($response, $versions)`
-- `assertRouteVersions($response, $versions)`
-- `assertDeprecationMessage($response, $message)`
-- `assertReplacedBy($response, $version)`
-
-### Running Tests
+### Test Helpers
+- `getWithVersion()`, `postWithVersion()`, `putWithVersion()`, `deleteWithVersion()`
+- `assertApiVersion()`, `assertApiVersionDeprecated()`, `assertReplacedBy()`
 
 ```bash
-# Run all tests
-composer test
-
-# Run tests with coverage
-composer test-coverage
-
-# Run specific test file
-./vendor/bin/pest tests/Feature/AttributeVersioningTest.php
-
-# Run specific test
-./vendor/bin/pest --filter="user endpoint v1"
+composer test                    # Run all tests
+composer test-coverage           # With coverage
+./vendor/bin/pest --filter="v1"  # Specific tests
 ```
 
-## Response Headers
-
-The middleware automatically adds helpful headers to API responses:
+## 📋 Response Headers
 
 ```http
 X-API-Version: 2.0
 X-API-Supported-Versions: 1.0, 1.1, 2.0, 2.1
 X-API-Route-Versions: 2.0, 2.1
 X-API-Deprecated: true
-X-API-Deprecation-Message: This endpoint is deprecated
 X-API-Sunset: 2025-12-31
 X-API-Replaced-By: 2.0
 ```
 
-## Error Handling
-
-When an unsupported version is requested, the package returns a structured error response:
+## ⚠️ Error Handling
 
 ```json
 {
@@ -492,364 +314,62 @@ When an unsupported version is requested, the package returns a structured error
     "message": "API version '3.0' is not supported for this endpoint.",
     "requested_version": "3.0",
     "supported_versions": ["1.0", "1.1", "2.0", "2.1"],
-    "endpoint_versions": ["2.0", "2.1"],
-    "documentation": "https://docs.example.com/api"
+    "endpoint_versions": ["2.0", "2.1"]
 }
 ```
 
-## Advanced Examples
-
-### Complex Controller with Multiple Versions
-
-```php
-<?php
-
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\{ApiVersion, Deprecated, MapToApiVersion};
-
-#[ApiVersion(['1.0', '1.1', '2.0'])]
-class UserController extends Controller
-{
-    use HasApiVersionAttributes;
-
-    public function index(): JsonResponse
-    {
-        $users = User::all();
-        return UserResource::collection($users);
-    }
-
-    #[MapToApiVersion(['2.0'])]
-    public function store(Request $request): JsonResponse
-    {
-        // Only available in v2.0
-        $user = User::create($request->validated());
-        return new UserResource($user);
-    }
-
-    #[Deprecated(message: 'Use POST /users instead', replacedBy: '2.0')]
-    #[MapToApiVersion(['1.0', '1.1'])]
-    public function create(Request $request): JsonResponse
-    {
-        // Deprecated method for v1.x
-        return $this->store($request);
-    }
-}
-```
-
-### Dynamic Resource Configuration
-
-```php
-class UserResource extends VersionedJsonResource
-{
-    protected array $versionConfigs = [
-        '1.0' => ['id', 'name'],
-        '1.1' => ['id', 'name', 'email'],
-        '2.0' => ['id', 'name', 'email', 'created_at', 'profile'],
-        '2.1' => ['id', 'name', 'email', 'created_at', 'updated_at', 'profile', 'preferences', 'stats'],
-    ];
-
-    protected function toArrayDefault(Request $request): array
-    {
-        $version = $this->getCurrentApiVersion();
-        $config = $this->versionConfigs[$version] ?? $this->versionConfigs['2.1'];
-
-        $data = [];
-        foreach ($config as $field) {
-            $data[$field] = $this->getFieldValue($field);
-        }
-
-        return $data;
-    }
-
-    private function getFieldValue(string $field): mixed
-    {
-        return match($field) {
-            'profile' => ['avatar' => $this->avatar_url, 'bio' => $this->bio],
-            'preferences' => ['theme' => $this->theme ?? 'light'],
-            'stats' => ['login_count' => $this->login_count ?? 0],
-            default => $this->$field,
-        };
-    }
-}
-```
-
-### Version-Neutral Endpoints
-
-```php
-#[ApiVersionNeutral]
-class HealthController extends Controller
-{
-    use HasApiVersionAttributes;
-
-    public function check(): JsonResponse
-    {
-        return response()->json([
-            'status' => 'healthy',
-            'timestamp' => now()->toISOString(),
-            'version' => $this->getCurrentApiVersion(),
-        ]);
-    }
-}
-```
-
-## Configuration Options
+## ⚙️ Configuration
 
 ### Detection Methods
-
-Configure how versions are detected from requests:
-
 ```php
 'detection_methods' => [
-    'header' => [
-        'enabled' => true,
-        'header_name' => 'X-API-Version',
-    ],
-    'query' => [
-        'enabled' => true,
-        'parameter_name' => 'api-version',
-    ],
-    'path' => [
-        'enabled' => true,
-        'prefix' => 'api/v',  // Matches /api/v1.0/users
-    ],
-    'media_type' => [
-        'enabled' => false,
-        'format' => 'application/vnd.api+json;version=%s',
-    ],
+    'header' => ['enabled' => true, 'header_name' => 'X-API-Version'],
+    'query' => ['enabled' => true, 'parameter_name' => 'api-version'],
+    'path' => ['enabled' => true, 'prefix' => 'api/v'],
+    'media_type' => ['enabled' => false],
 ],
 ```
 
-### Version Inheritance
-
-Set up fallback chains for backward compatibility:
-
+### Version Inheritance & Mapping
 ```php
 'version_inheritance' => [
-    '1.1' => '1.0',  // v1.1 falls back to v1.0 methods
-    '1.2' => '1.1',  // v1.2 falls back to v1.1, then v1.0
-    '2.1' => '2.0',  // v2.1 falls back to v2.0 methods
+    '1.1' => '1.0',  // v1.1 falls back to v1.0
+    '2.1' => '2.0',  // v2.1 falls back to v2.0
 ],
-```
-
-### Method Mapping
-
-Map versions to specific resource methods:
-
-```php
 'version_method_mapping' => [
-    '1.0' => 'toArrayV1',
-    '1.1' => 'toArrayV11',
-    '2.0' => 'toArrayV2',
-    '2.1' => 'toArrayV21',
+    '1.0' => 'toArrayV1', '2.0' => 'toArrayV2', '2.1' => 'toArrayV21',
 ],
 ```
 
-## Artisan Commands
+## 📚 Best Practices
 
-### `php artisan make:versioned-controller`
+- Use semantic versioning: `1.0`, `1.1`, `2.0`
+- Leverage version inheritance for backward compatibility
+- Always provide clear deprecation information with sunset dates
+- Test all supported versions thoroughly
+- Keep version-specific logic organized in resources
 
-Generate a new versioned controller with proper attributes:
+## 🔄 Migration Guide
 
-```bash
-# Basic usage
-php artisan make:versioned-controller ProductController --api-version=2.0
+1. Install package and publish configuration
+2. Apply `api.version` middleware to routes
+3. Add attributes to controllers
+4. Extend resources from `VersionedJsonResource`
+5. Add comprehensive tests
 
-# With deprecation
-php artisan make:versioned-controller V1ProductController \
-    --api-version=1.0 \
-    --deprecated \
-    --sunset=2025-06-30 \
-    --replaced-by=2.0
-```
-
-**Options:**
-- `--api-version=X.X` - Specify the API version (default: 1.0)
-- `--deprecated` - Mark the controller as deprecated
-- `--sunset=DATE` - Set sunset date for deprecated controller
-- `--replaced-by=VERSION` - Specify replacement version
-
-### `php artisan api:versions`
-
-Display comprehensive versioning information for all API routes:
-
-```bash
-# Show all API routes
-php artisan api:versions
-
-# Filter by route pattern
-php artisan api:versions --route=users
-
-# Show only deprecated endpoints
-php artisan api:versions --deprecated
-
-# Filter by specific version
-php artisan api:versions --api-version=2.0
-```
-
-**Options:**
-- `--route=PATTERN` - Filter routes by URI pattern
-- `--api-version=X.X` - Show only routes supporting specific version
-- `--deprecated` - Show only deprecated endpoints
-
-### `php artisan api:version-config`
-
-Manage version configuration:
-
-```bash
-# Show current configuration
-php artisan api:version-config --show
-
-# Get guidance for adding new versions
-php artisan api:version-config --add-version=3.0 --method=toArrayV3
-```
-
-**Options:**
-- `--show` - Display current version configuration
-- `--add-version=X.X` - Get instructions for adding new version
-- `--method=NAME` - Specify method name for new version
-
-## Best Practices
-
-### 1. Version Naming Convention
-Use semantic versioning (e.g., `1.0`, `1.1`, `2.0`) for clarity and consistency.
-
-### 2. Backward Compatibility
-Leverage version inheritance to maintain backward compatibility:
-
-```php
-'version_inheritance' => [
-    '1.1' => '1.0',  // v1.1 can fall back to v1.0 methods
-],
-```
-
-### 3. Deprecation Strategy
-Always provide clear deprecation information:
-
-```php
-#[Deprecated(
-    message: 'This endpoint will be removed in v3.0. Use /api/v2/users instead.',
-    sunsetDate: '2025-12-31',
-    replacedBy: '2.0'
-)]
-```
-
-### 4. Resource Organization
-Keep version-specific logic organized in your resources:
-
-```php
-// Good: Clear method names
-protected function toArrayV1(Request $request): array {}
-protected function toArrayV2(Request $request): array {}
-
-// Good: Inheritance for similar versions
-protected function toArrayV11(Request $request): array
-{
-    return array_merge($this->toArrayV1($request), [
-        'email' => $this->email, // Added field
-    ]);
-}
-```
-
-### 5. Testing Strategy
-Test all supported versions thoroughly:
-
-```php
-test('all supported versions', function () {
-    foreach (['1.0', '1.1', '2.0'] as $version) {
-        $response = getWithVersion('/api/users', $version);
-        $response->assertOk();
-        assertApiVersion($response, $version);
-    }
-});
-```
-
-## Error Responses
-
-### Unsupported Version
-
-When a client requests an unsupported version:
-
-**Request:**
-```bash
-curl -H "X-API-Version: 3.0" https://api.example.com/users
-```
-
-**Response:**
-```json
-{
-    "error": "Unsupported API Version",
-    "message": "API version '3.0' is not supported for this endpoint.",
-    "requested_version": "3.0",
-    "supported_versions": ["1.0", "1.1", "2.0", "2.1"],
-    "endpoint_versions": ["2.0", "2.1"],
-    "documentation": "https://docs.example.com/api"
-}
-```
-
-## Migration Guide
-
-### From Other Versioning Solutions
-
-1. **Install the package** and publish the configuration
-2. **Update your routes** to use the `api.version` middleware
-3. **Add attributes** to your existing controllers
-4. **Migrate resources** to extend `VersionedJsonResource`
-5. **Test thoroughly** using the provided test utilities
-
-### Adding New Versions
-
-1. **Update configuration:**
-   ```php
-   'supported_versions' => ['1.0', '1.1', '2.0', '2.1', '3.0'],
-   'version_method_mapping' => [
-       // ... existing mappings
-       '3.0' => 'toArrayV3',
-   ],
-   ```
-
-2. **Add version to controllers:**
-   ```php
-   #[ApiVersion(['2.0', '2.1', '3.0'])]
-   class UserController extends Controller {}
-   ```
-
-3. **Implement resource methods:**
-   ```php
-   protected function toArrayV3(Request $request): array
-   {
-       // New version implementation
-   }
-   ```
-
-4. **Test the new version** thoroughly
-
-## Contributing
-
-Contributions are welcome! Please ensure you:
+## 🤝 Contributing
 
 1. Follow PSR-12 coding standards
 2. Add Pest tests for new features
-3. Update documentation for changes
-4. Run the test suite: `composer test` (uses Pest)
-5. Run static analysis: `composer analyse`
-6. Format code: `composer format`
+3. Run: `composer test`, `composer analyse`, `composer format`
 
-## Security
+## 📄 License
 
-If you discover any security-related issues, please email [adil.shahghasi@gmail.com](mailto:adil.shahghasi@gmail.com) instead of using the issue tracker.
+MIT License. See [LICENSE.md](LICENSE.md) for details.
 
-## Credits
+## 👨‍💻 Credits
 
 - [Shahghasi Adil](https://github.com/shahghasiadil)
 - [All Contributors](../../contributors)
-
-## License
-
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
-
-## Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
----
 
 **Made with ❤️ for the Laravel community**

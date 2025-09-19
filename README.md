@@ -135,11 +135,14 @@ class HealthController extends Controller
 }
 ```
 
-### 4. Create Resources
+### 4. Create Versioned Resources
 
 ```php
+use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedJsonResource;
+
 class UserResource extends VersionedJsonResource
 {
+    // Method-based versioning (recommended)
     protected function toArrayV1(Request $request): array
     {
         return ['id' => $this->id, 'name' => $this->name];
@@ -153,6 +156,20 @@ class UserResource extends VersionedJsonResource
             'email' => $this->email,
             'created_at' => $this->created_at->toISOString(),
         ];
+    }
+
+    protected function toArrayV21(Request $request): array
+    {
+        return array_merge($this->toArrayV2($request), [
+            'updated_at' => $this->updated_at->toISOString(),
+            'profile' => ['avatar' => $this->avatar_url],
+        ]);
+    }
+
+    // Fallback method (optional)
+    protected function toArrayDefault(Request $request): array
+    {
+        return $this->toArrayV2($request);
     }
 }
 ```
@@ -233,6 +250,103 @@ class PostController extends Controller
     #[MapToApiVersion(['2.0'])]
     #[Deprecated(sunsetDate: '2025-06-30', replacedBy: '2.1')]
     public function legacyUpdate() {}
+}
+```
+
+## 📦 Versioned Resources
+
+### Method-Based Versioning (Recommended)
+```php
+use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedJsonResource;
+
+class UserResource extends VersionedJsonResource
+{
+    protected function toArrayV1(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+        ];
+    }
+
+    protected function toArrayV2(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'created_at' => $this->created_at->toISOString(),
+        ];
+    }
+
+    protected function toArrayV21(Request $request): array
+    {
+        // Inherit from v2.0 and add new fields
+        return array_merge($this->toArrayV2($request), [
+            'updated_at' => $this->updated_at->toISOString(),
+            'profile' => $this->buildProfile(),
+            'preferences' => $this->user_preferences,
+        ]);
+    }
+
+    // Default fallback method
+    protected function toArrayDefault(Request $request): array
+    {
+        return $this->toArrayV21($request);
+    }
+
+    private function buildProfile(): array
+    {
+        return [
+            'avatar' => $this->avatar_url,
+            'bio' => $this->bio,
+            'location' => $this->location,
+        ];
+    }
+}
+```
+
+### Configuration-Based Versioning
+```php
+class PostResource extends VersionedJsonResource
+{
+    protected array $versionConfigs = [
+        '1.0' => ['id', 'title', 'content'],
+        '1.1' => ['id', 'title', 'content', 'author_name'],
+        '2.0' => ['id', 'title', 'content', 'author', 'created_at'],
+        '2.1' => ['id', 'title', 'content', 'author', 'created_at', 'updated_at', 'tags', 'meta'],
+    ];
+
+    protected function toArrayDefault(Request $request): array
+    {
+        $version = $this->getCurrentApiVersion();
+        $config = $this->versionConfigs[$version] ?? $this->versionConfigs['2.1'];
+
+        $data = [];
+        foreach ($config as $field) {
+            $data[$field] = $this->getFieldValue($field);
+        }
+
+        return $data;
+    }
+
+    private function getFieldValue(string $field): mixed
+    {
+        return match($field) {
+            'author' => [
+                'id' => $this->user_id,
+                'name' => $this->user->name,
+                'email' => $this->user->email,
+            ],
+            'author_name' => $this->user->name, // Legacy field for v1.1
+            'tags' => $this->tags->pluck('name')->toArray(),
+            'meta' => [
+                'views' => $this->views_count,
+                'likes' => $this->likes_count,
+            ],
+            default => $this->$field,
+        };
+    }
 }
 ```
 

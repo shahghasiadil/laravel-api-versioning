@@ -56,4 +56,74 @@ trait HasApiVersionAttributes
 
         return $versionInfo?->replacedBy;
     }
+
+    /**
+     * Check if current API version is greater than the given version
+     */
+    protected function isVersionGreaterThan(string $version): bool
+    {
+        $currentVersion = $this->getCurrentApiVersion();
+        if ($currentVersion === null) {
+            return false;
+        }
+
+        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+            ->isGreaterThan($currentVersion, $version);
+    }
+
+    /**
+     * Check if current API version is greater than or equal to the given version
+     */
+    protected function isVersionGreaterThanOrEqual(string $version): bool
+    {
+        $currentVersion = $this->getCurrentApiVersion();
+        if ($currentVersion === null) {
+            return false;
+        }
+
+        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+            ->isGreaterThanOrEqual($currentVersion, $version);
+    }
+
+    /**
+     * Check if current API version is less than the given version
+     */
+    protected function isVersionLessThan(string $version): bool
+    {
+        $currentVersion = $this->getCurrentApiVersion();
+        if ($currentVersion === null) {
+            return false;
+        }
+
+        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+            ->isLessThan($currentVersion, $version);
+    }
+
+    /**
+     * Check if current API version is less than or equal to the given version
+     */
+    protected function isVersionLessThanOrEqual(string $version): bool
+    {
+        $currentVersion = $this->getCurrentApiVersion();
+        if ($currentVersion === null) {
+            return false;
+        }
+
+        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+            ->isLessThanOrEqual($currentVersion, $version);
+    }
+
+    /**
+     * Check if current API version is between two versions (inclusive)
+     */
+    protected function isVersionBetween(string $min, string $max): bool
+    {
+        $currentVersion = $this->getCurrentApiVersion();
+        if ($currentVersion === null) {
+            return false;
+        }
+
+        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+            ->isBetween($currentVersion, $min, $max);
+    }
 }

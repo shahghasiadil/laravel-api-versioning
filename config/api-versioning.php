@@ -112,4 +112,18 @@ return [
     'documentation' => [
         'base_url' => env('API_DOCUMENTATION_URL'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Enable caching of attribute resolution to improve performance.
+    | Caching significantly reduces reflection overhead on high-traffic APIs.
+    |
+    */
+    'cache' => [
+        'enabled' => env('API_VERSIONING_CACHE_ENABLED', true),
+        'ttl' => env('API_VERSIONING_CACHE_TTL', 3600), // seconds
+    ],
 ];

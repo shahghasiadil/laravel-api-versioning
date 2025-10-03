@@ -55,7 +55,14 @@ class VersionManager
         $path = $request->path();
         $prefix = $config['prefix'];
 
-        if (preg_match('#^'.preg_quote($prefix, '#').'(\d+(?:\.\d+)?)/#', $path, $matches)) {
+        // Handle various path patterns:
+        // - api/v1.0/users
+        // - api/v2.1.0/users
+        // - api/v2/users
+        // - v1.0/users (without api prefix)
+        $pattern = '#^'.preg_quote($prefix, '#').'(\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)(?:/|$)#';
+
+        if (preg_match($pattern, $path, $matches)) {
             return $matches[1];
         }
 

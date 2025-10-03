@@ -19,6 +19,36 @@ A powerful and elegant attribute-based API versioning solution for Laravel appli
 - ⚡ **Performance optimized** - Intelligent caching with 87% faster response times
 - 🔢 **Version comparison** - Built-in utilities for semantic version comparison
 - 📋 **RFC 7807 compliance** - Standards-compliant error responses
+- 🚦 **Version-specific rate limiting** - Different rate limits for different API versions
+- 🤝 **Version negotiation** - Smart fallback when requested version unavailable
+- ✅ **Versioned validation** - Version-aware FormRequest validation
+- 📚 **OpenAPI generation** - Automatic Swagger/OpenAPI documentation per version
+
+## 🆕 What's New in v1.2.0 (Phase 2)
+
+### 🚦 Version-Specific Rate Limiting
+- **Different Limits Per Version** - Configure unique rate limits for each API version
+- **RFC 6585 Compliant** - Standards-compliant 429 responses
+- **Rate Limit Headers** - `X-RateLimit-Limit` and `X-RateLimit-Remaining`
+- **Flexible Configuration** - Per-version or per-route rate limiting
+
+### 🤝 Version Negotiation
+- **Smart Fallback** - Three negotiation strategies: strict, best_match, latest
+- **Closest Match** - Find the best compatible version automatically
+- **Negotiation Headers** - Track requested vs served versions
+- **Configurable Preferences** - Prefer higher or lower versions
+
+### ✅ Versioned Request Validation
+- **VersionedFormRequest** - Base class for version-aware validation
+- **Version-Specific Rules** - Define `rulesV1()`, `rulesV2()`, etc.
+- **Automatic Inheritance** - Rules inherit from parent versions
+- **Custom Messages** - Version-specific error messages
+
+### 📚 OpenAPI/Swagger Generation
+- **Automatic Documentation** - Generate OpenAPI 3.0 specs per version
+- **Multiple Formats** - JSON and YAML output
+- **Deprecation Detection** - Automatically marks deprecated endpoints
+- **Version-Specific Docs** - Separate documentation for each API version
 
 ## 🆕 What's New in v1.1.0
 
@@ -499,6 +529,290 @@ $comparator->satisfies('2.1', '^2.0');              // true (>=2.0 && <3.0)
 $comparator->satisfies('2.1.5', '~2.1');            // true (>=2.1 && <2.2)
 ```
 
+## 🚦 Version-Specific Rate Limiting
+
+Apply different rate limits to different API versions to encourage upgrades or protect legacy versions.
+
+### Configuration
+
+```php
+// config/api-versioning.php
+'rate_limits' => [
+    '1.0' => 30,   // 30 requests/minute for v1.0 (legacy)
+    '1.1' => 45,   // 45 requests/minute for v1.1
+    '2.0' => 60,   // 60 requests/minute for v2.0
+    '2.1' => 120,  // 120 requests/minute for v2.1 (latest, most generous)
+],
+```
+
+### Usage
+
+```php
+// routes/api.php
+Route::middleware(['api.version', 'api.version.ratelimit'])->group(function () {
+    Route::apiResource('users', UserController::class);
+});
+
+// Or with custom limits
+Route::middleware(['api.version', 'api.version.ratelimit:100,1'])
+    ->get('premium-endpoint', [PremiumController::class, 'index']);
+```
+
+### Response Headers
+
+```http
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 115
+```
+
+### Rate Limit Exceeded Response (RFC 6585)
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc6585#section-4",
+  "title": "Too Many Requests",
+  "status": 429,
+  "detail": "Rate limit exceeded. Please try again later.",
+  "retry_after": 45,
+  "limit": 120
+}
+```
+
+## 🤝 Version Negotiation
+
+Smart version fallback when the exact requested version is not available.
+
+### Configuration
+
+```php
+// config/api-versioning.php
+'negotiation' => [
+    'strategy' => env('API_VERSION_NEGOTIATION', 'strict'),
+    'prefer_higher' => true, // Prefer higher versions when negotiating
+],
+```
+
+### Negotiation Strategies
+
+**1. Strict (Default)** - Return error if exact version not found
+```env
+API_VERSION_NEGOTIATION=strict
+```
+
+**2. Best Match** - Find closest compatible version
+```env
+API_VERSION_NEGOTIATION=best_match
+```
+- If v1.5 requested and [1.0, 2.0] available → serves v2.0 (prefer_higher: true)
+- If v1.5 requested and [1.0, 2.0] available → serves v1.0 (prefer_higher: false)
+
+**3. Latest** - Always fall back to latest version
+```env
+API_VERSION_NEGOTIATION=latest
+```
+
+### Negotiation Headers
+
+When version negotiation occurs, these headers are added:
+
+```http
+X-API-Version-Requested: 1.5
+X-API-Version-Served: 2.0
+X-API-Version-Negotiated: true
+```
+
+## ✅ Versioned Request Validation
+
+Create version-aware FormRequests with automatic validation rule inheritance.
+
+### Basic Usage
+
+```php
+use ShahGhasiAdil\LaravelApiVersioning\Http\Requests\VersionedFormRequest;
+
+class StoreUserRequest extends VersionedFormRequest
+{
+    // v1.0 rules - basic validation
+    protected function rulesV1(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+        ];
+    }
+
+    // v2.0 rules - added password requirements
+    protected function rulesV2(): array
+    {
+        return array_merge($this->rulesV1(), [
+            'password' => 'required|min:8',
+        ]);
+    }
+
+    // v2.1 rules - added phone and stricter password
+    protected function rulesV21(): array
+    {
+        return array_merge($this->rulesV2(), [
+            'password' => 'required|min:12|confirmed',
+            'phone' => 'nullable|string|max:20',
+        ]);
+    }
+
+    // Default fallback
+    protected function rulesDefault(): array
+    {
+        return $this->rulesV21();
+    }
+}
+```
+
+### Version-Specific Messages
+
+```php
+class StoreUserRequest extends VersionedFormRequest
+{
+    protected function rulesV2(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'password' => 'required|min:8',
+        ];
+    }
+
+    // Custom messages for v2.0
+    protected function messagesV2(): array
+    {
+        return [
+            'password.min' => 'Password must be at least 8 characters in v2.0',
+        ];
+    }
+
+    protected function messagesDefault(): array
+    {
+        return [];
+    }
+}
+```
+
+### Controller Usage
+
+```php
+use App\Http\Requests\StoreUserRequest;
+
+class UserController extends Controller
+{
+    public function store(StoreUserRequest $request)
+    {
+        // Request is automatically validated based on current API version
+        $validated = $request->validated();
+
+        $user = User::create($validated);
+
+        return new UserResource($user);
+    }
+}
+```
+
+## 📚 OpenAPI/Swagger Documentation
+
+Automatically generate OpenAPI 3.0 documentation for your versioned APIs.
+
+### Generate Documentation
+
+```bash
+# Generate for default version
+php artisan api:openapi:generate
+
+# Generate for specific version
+php artisan api:openapi:generate --api-version=2.0
+
+# Custom output path
+php artisan api:openapi:generate --output=public/api-docs/v2.json
+
+# YAML format
+php artisan api:openapi:generate --format=yaml --api-version=2.0
+```
+
+### Generated OpenAPI Document
+
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "My App API",
+    "version": "2.0",
+    "description": "API documentation for version 2.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com/api",
+      "description": "API Server"
+    }
+  ],
+  "paths": {
+    "/users": {
+      "get": {
+        "summary": "Get Users",
+        "operationId": "UserController_index_get",
+        "tags": ["User"],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Deprecation Detection
+
+Deprecated endpoints are automatically marked in the generated documentation:
+
+```json
+{
+  "paths": {
+    "/legacy-endpoint": {
+      "get": {
+        "summary": "Get Legacy Data",
+        "deprecated": true,
+        "description": "This endpoint is deprecated. Use /v2/data instead."
+      }
+    }
+  }
+}
+```
+
+### Integration with Swagger UI
+
+```bash
+# Generate docs
+php artisan api:openapi:generate --output=public/swagger/v2.json
+
+# Serve with Swagger UI
+# Add to public/swagger/index.html
+```
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+    <script>
+        SwaggerUIBundle({
+            url: '/swagger/v2.json',
+            dom_id: '#swagger-ui',
+        });
+    </script>
+</body>
+</html>
+```
+
 ## 🛠️ Artisan Commands
 
 ```bash
@@ -519,6 +833,11 @@ php artisan api:version:health              # Validate configuration
 
 # Cache management
 php artisan api:cache:clear                 # Clear attribute cache
+
+# OpenAPI documentation
+php artisan api:openapi:generate            # Generate OpenAPI docs
+php artisan api:openapi:generate --api-version=2.0  # For specific version
+php artisan api:openapi:generate --format=yaml      # YAML format
 
 # Configuration management
 php artisan api:version-config --show       # Show config
@@ -683,18 +1002,63 @@ php artisan api:cache:clear
 API_VERSIONING_CACHE_ENABLED=false
 ```
 
+### Rate Limiting (Phase 2)
+```php
+'rate_limits' => [
+    '1.0' => 30,   // 30 requests/minute for v1.0 (legacy)
+    '1.1' => 45,   // 45 requests/minute for v1.1
+    '2.0' => 60,   // 60 requests/minute for v2.0
+    '2.1' => 120,  // 120 requests/minute for v2.1 (latest)
+],
+```
+
+**Benefits:**
+- 🚦 Encourage users to upgrade to newer versions
+- 🛡️ Protect legacy versions from abuse
+- 📊 Manage traffic based on version capabilities
+- ⚖️ Fair usage across different API versions
+
+### Version Negotiation (Phase 2)
+```php
+'negotiation' => [
+    'strategy' => env('API_VERSION_NEGOTIATION', 'strict'),
+    'prefer_higher' => true, // Prefer higher versions when negotiating
+],
+```
+
+**Environment Variables:**
+```env
+API_VERSION_NEGOTIATION=strict          # strict | best_match | latest
+```
+
+**Strategies:**
+- `strict` (default): Error if exact version not found
+- `best_match`: Find closest compatible version
+- `latest`: Always fall back to latest version
+
 ## 📚 Best Practices
 
+### Core Practices
 - ✅ **Use semantic versioning** - `1.0`, `1.1`, `2.0`
 - ✅ **Enable caching in production** - 87% performance improvement
 - ✅ **Leverage version inheritance** - For backward compatibility
 - ✅ **Use version comparison helpers** - Instead of string comparison
 - ✅ **Provide clear deprecation info** - Include sunset dates and replacement versions
 - ✅ **Test all supported versions** - Use `php artisan api:version:health`
-- ✅ **Implement resource collections** - For consistent pagination
+
+### Phase 2 Practices
+- ✅ **Configure version-specific rate limits** - Encourage upgrades, protect legacy
+- ✅ **Use versioned FormRequests** - Keep validation organized per version
+- ✅ **Generate OpenAPI docs** - Keep documentation in sync with code
+- ✅ **Choose negotiation strategy wisely** - Strict for breaking changes, best_match for flexibility
+- ✅ **Apply rate limit middleware** - Protect your API from abuse
+
+### DevOps & Monitoring
 - ✅ **Use health checks in CI/CD** - Validate configuration automatically
 - ✅ **Clear cache after deployment** - `php artisan api:cache:clear`
 - ✅ **Monitor with JSON output** - For automated API version tracking
+- ✅ **Generate docs in CI/CD** - Keep OpenAPI specs updated
+- ✅ **Implement resource collections** - For consistent pagination
 
 ## 🔄 Migration Guide
 

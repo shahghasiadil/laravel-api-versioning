@@ -126,4 +126,39 @@ return [
         'enabled' => env('API_VERSIONING_CACHE_ENABLED', true),
         'ttl' => env('API_VERSIONING_CACHE_TTL', 3600), // seconds
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiting Per Version
+    |--------------------------------------------------------------------------
+    |
+    | Define different rate limits for different API versions.
+    | This allows you to be more restrictive on older versions or more
+    | generous with newer versions. Values are requests per minute.
+    |
+    */
+    'rate_limits' => [
+        '1.0' => 30,   // 30 requests/minute for v1.0
+        '1.1' => 45,   // 45 requests/minute for v1.1
+        '2.0' => 60,   // 60 requests/minute for v2.0
+        '2.1' => 120,  // 120 requests/minute for v2.1 (latest)
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Version Negotiation
+    |--------------------------------------------------------------------------
+    |
+    | Configure version negotiation behavior when requested version is not
+    | available. Options: 'strict', 'best_match', 'latest'
+    |
+    | - strict: Return error if exact version not found
+    | - best_match: Find closest compatible version
+    | - latest: Fall back to latest supported version
+    |
+    */
+    'negotiation' => [
+        'strategy' => env('API_VERSION_NEGOTIATION', 'strict'),
+        'prefer_higher' => true, // When negotiating, prefer higher versions
+    ],
 ];

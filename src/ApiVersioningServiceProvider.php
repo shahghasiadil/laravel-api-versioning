@@ -9,13 +9,16 @@ use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiCacheClearCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionConfigCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionHealthCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionsCommand;
+use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\GenerateOpenApiCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\MakeVersionedControllerCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
+use ShahGhasiAdil\LaravelApiVersioning\Middleware\VersionedRateLimitMiddleware;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionConfigService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionNegotiator;
 
 class ApiVersioningServiceProvider extends ServiceProvider
 {
@@ -53,6 +56,14 @@ class ApiVersioningServiceProvider extends ServiceProvider
         $this->app->singleton(VersionComparator::class, function ($app): VersionComparator {
             return new VersionComparator;
         });
+
+        $this->app->singleton(VersionNegotiator::class, function ($app): VersionNegotiator {
+            return new VersionNegotiator(
+                $app->make(VersionManager::class),
+                $app->make(VersionComparator::class),
+                $app['config']->get('api-versioning', [])
+            );
+        });
     }
 
     public function boot(): void
@@ -62,6 +73,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
         ], 'config');
 
         $this->app['router']->aliasMiddleware('api.version', AttributeApiVersionMiddleware::class);
+        $this->app['router']->aliasMiddleware('api.version.ratelimit', VersionedRateLimitMiddleware::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -69,6 +81,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
                 ApiVersionConfigCommand::class,
                 ApiVersionHealthCommand::class,
                 ApiCacheClearCommand::class,
+                GenerateOpenApiCommand::class,
                 MakeVersionedControllerCommand::class,
             ]);
         }

@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
+use ShahGhasiAdil\LaravelApiVersioning\Http\Responses\ProblemDetailsResponse;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
@@ -31,7 +32,7 @@ class AttributeApiVersionMiddleware
             $route = $request->route();
 
             if (! $route instanceof Route) {
-                throw new UnsupportedVersionException('Route not found');
+                return ProblemDetailsResponse::routeNotFound();
             }
 
             // Resolve version info using attributes
@@ -91,27 +92,15 @@ class AttributeApiVersionMiddleware
         }
     }
 
-    private function createErrorResponse(UnsupportedVersionException $e): JsonResponse
+    private function createErrorResponse(UnsupportedVersionException $e): ProblemDetailsResponse
     {
-        $data = [
-            'error' => 'Unsupported API Version',
-            'message' => $e->getMessage(),
-            'supported_versions' => $this->versionManager->getSupportedVersions(),
-        ];
-
-        if ($e->requestedVersion !== null) {
-            $data['requested_version'] = $e->requestedVersion;
-        }
-
-        if ($e->supportedVersions !== []) {
-            $data['endpoint_versions'] = $e->supportedVersions;
-        }
-
         $documentationUrl = config('api-versioning.documentation.base_url');
-        if ($documentationUrl !== null) {
-            $data['documentation'] = $documentationUrl;
-        }
 
-        return response()->json($data, 400);
+        return ProblemDetailsResponse::unsupportedVersion(
+            requestedVersion: $e->requestedVersion ?? 'unknown',
+            supportedVersions: $this->versionManager->getSupportedVersions(),
+            endpointVersions: $e->supportedVersions,
+            documentationUrl: $documentationUrl
+        );
     }
 }

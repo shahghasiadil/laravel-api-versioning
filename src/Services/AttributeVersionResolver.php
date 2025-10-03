@@ -16,7 +16,8 @@ use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 class AttributeVersionResolver
 {
     public function __construct(
-        private readonly VersionManager $versionManager
+        private readonly VersionManager $versionManager,
+        private readonly AttributeCacheService $cache
     ) {}
 
     public function resolveVersionForRoute(Route $route, string $requestedVersion): ?VersionInfo
@@ -28,34 +29,39 @@ class AttributeVersionResolver
             return null;
         }
 
-        $controllerClass = new ReflectionClass($controller);
-        $actionMethod = $controllerClass->getMethod($action);
+        $controllerClass = get_class($controller);
+        $cacheKey = $this->cache->generateRouteKey($controllerClass, $action, $requestedVersion);
 
-        // Check if method is version neutral
-        if ($this->hasAttribute($actionMethod, ApiVersionNeutral::class) ||
-            $this->hasAttribute($controllerClass, ApiVersionNeutral::class)) {
-            return $this->createVersionInfo($requestedVersion, true);
-        }
+        return $this->cache->remember($cacheKey, function () use ($controller, $action, $requestedVersion) {
+            $controllerClass = new ReflectionClass($controller);
+            $actionMethod = $controllerClass->getMethod($action);
 
-        // Get method-level version mappings
-        $methodVersions = $this->getVersionsFromAttributes($actionMethod, MapToApiVersion::class);
-        if ($methodVersions !== [] && in_array($requestedVersion, $methodVersions, true)) {
-            return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
-        }
+            // Check if method is version neutral
+            if ($this->hasAttribute($actionMethod, ApiVersionNeutral::class) ||
+                $this->hasAttribute($controllerClass, ApiVersionNeutral::class)) {
+                return $this->createVersionInfo($requestedVersion, true);
+            }
 
-        // Get method-level API versions
-        $methodApiVersions = $this->getVersionsFromAttributes($actionMethod, ApiVersion::class);
-        if ($methodApiVersions !== [] && in_array($requestedVersion, $methodApiVersions, true)) {
-            return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
-        }
+            // Get method-level version mappings
+            $methodVersions = $this->getVersionsFromAttributes($actionMethod, MapToApiVersion::class);
+            if ($methodVersions !== [] && in_array($requestedVersion, $methodVersions, true)) {
+                return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
+            }
 
-        // Get controller-level versions
-        $controllerVersions = $this->getVersionsFromAttributes($controllerClass, ApiVersion::class);
-        if ($controllerVersions !== [] && in_array($requestedVersion, $controllerVersions, true)) {
-            return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
-        }
+            // Get method-level API versions
+            $methodApiVersions = $this->getVersionsFromAttributes($actionMethod, ApiVersion::class);
+            if ($methodApiVersions !== [] && in_array($requestedVersion, $methodApiVersions, true)) {
+                return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
+            }
 
-        return null;
+            // Get controller-level versions
+            $controllerVersions = $this->getVersionsFromAttributes($controllerClass, ApiVersion::class);
+            if ($controllerVersions !== [] && in_array($requestedVersion, $controllerVersions, true)) {
+                return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
+            }
+
+            return null;
+        });
     }
 
     private function createVersionInfo(
@@ -128,26 +134,31 @@ class AttributeVersionResolver
             return [];
         }
 
-        $controllerClass = new ReflectionClass($controller);
-        $actionMethod = $controllerClass->getMethod($action);
+        $controllerClass = get_class($controller);
+        $cacheKey = $this->cache->generateRouteVersionsKey($controllerClass, $action);
 
-        // If version neutral, return all supported versions
-        if ($this->hasAttribute($actionMethod, ApiVersionNeutral::class) ||
-            $this->hasAttribute($controllerClass, ApiVersionNeutral::class)) {
-            return $this->versionManager->getSupportedVersions();
-        }
+        return $this->cache->remember($cacheKey, function () use ($controller, $action) {
+            $controllerClass = new ReflectionClass($controller);
+            $actionMethod = $controllerClass->getMethod($action);
 
-        $versions = [];
+            // If version neutral, return all supported versions
+            if ($this->hasAttribute($actionMethod, ApiVersionNeutral::class) ||
+                $this->hasAttribute($controllerClass, ApiVersionNeutral::class)) {
+                return $this->versionManager->getSupportedVersions();
+            }
 
-        // Method-level versions
-        $versions = array_merge($versions, $this->getVersionsFromAttributes($actionMethod, MapToApiVersion::class));
-        $versions = array_merge($versions, $this->getVersionsFromAttributes($actionMethod, ApiVersion::class));
+            $versions = [];
 
-        // Controller-level versions
-        if ($versions === []) {
-            $versions = $this->getVersionsFromAttributes($controllerClass, ApiVersion::class);
-        }
+            // Method-level versions
+            $versions = array_merge($versions, $this->getVersionsFromAttributes($actionMethod, MapToApiVersion::class));
+            $versions = array_merge($versions, $this->getVersionsFromAttributes($actionMethod, ApiVersion::class));
 
-        return array_unique($versions);
+            // Controller-level versions
+            if ($versions === []) {
+                $versions = $this->getVersionsFromAttributes($controllerClass, ApiVersion::class);
+            }
+
+            return array_unique($versions);
+        });
     }
 }

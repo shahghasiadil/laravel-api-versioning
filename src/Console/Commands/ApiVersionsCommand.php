@@ -14,7 +14,9 @@ class ApiVersionsCommand extends Command
     protected $signature = 'api:versions
                            {--route= : Filter by specific route pattern}
                            {--api-version= : Filter by specific version}
-                           {--deprecated : Show only deprecated endpoints}';
+                           {--deprecated : Show only deprecated endpoints}
+                           {--json : Output as JSON}
+                           {--compact : Use compact table format}';
 
     protected $description = 'Display API versioning information for all routes';
 
@@ -85,15 +87,41 @@ class ApiVersionsCommand extends Command
         }
 
         if ($rows === []) {
-            $this->info('No matching routes found.');
+            if ($this->option('json')) {
+                $this->line(json_encode(['routes' => [], 'supported_versions' => $this->versionManager->getSupportedVersions()], JSON_PRETTY_PRINT));
+            } else {
+                $this->components->info('No matching routes found.');
+            }
 
             return self::SUCCESS;
+        }
+
+        // JSON output
+        if ($this->option('json')) {
+            $jsonData = [
+                'routes' => array_map(function ($row) use ($headers) {
+                    return array_combine($headers, $row);
+                }, $rows),
+                'supported_versions' => $this->versionManager->getSupportedVersions(),
+                'total_routes' => count($rows),
+            ];
+
+            $this->line(json_encode($jsonData, JSON_PRETTY_PRINT));
+
+            return self::SUCCESS;
+        }
+
+        // Compact format
+        if ($this->option('compact')) {
+            $headers = ['Method', 'URI', 'Versions', 'Deprecated'];
+            $rows = array_map(fn ($row) => [$row[0], $row[1], $row[3], $row[4]], $rows);
         }
 
         $this->table($headers, $rows);
 
         $this->newLine();
-        $this->info('Supported API Versions: '.implode(', ', $this->versionManager->getSupportedVersions()));
+        $this->components->info('Supported API Versions: '.implode(', ', $this->versionManager->getSupportedVersions()));
+        $this->components->info('Total Routes: '.count($rows));
 
         return self::SUCCESS;
     }

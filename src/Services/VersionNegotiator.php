@@ -15,9 +15,7 @@ class VersionNegotiator
     /**
      * Negotiate the best version based on requested version and available versions
      *
-     * @param string $requestedVersion
-     * @param array<string> $availableVersions
-     * @return string|null
+     * @param  array<string>  $availableVersions
      */
     public function negotiate(string $requestedVersion, array $availableVersions): ?string
     {

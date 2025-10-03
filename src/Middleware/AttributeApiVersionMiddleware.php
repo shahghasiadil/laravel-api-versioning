@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Middleware;
 
 use Closure;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;

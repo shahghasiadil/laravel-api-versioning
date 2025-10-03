@@ -7,7 +7,6 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Middleware;
 use Closure;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Responses\ProblemDetailsResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -20,11 +19,8 @@ class VersionedRateLimitMiddleware
     /**
      * Handle an incoming request
      *
-     * @param Request $request
-     * @param Closure $next
-     * @param int|string $maxAttempts Maximum attempts (can be version-specific)
-     * @param int $decayMinutes Decay time in minutes
-     * @return Response
+     * @param  int|string  $maxAttempts  Maximum attempts (can be version-specific)
+     * @param  int  $decayMinutes  Decay time in minutes
      */
     public function handle(Request $request, Closure $next, int|string $maxAttempts = 60, int $decayMinutes = 1): Response
     {

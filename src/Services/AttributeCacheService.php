@@ -18,9 +18,8 @@ class AttributeCacheService
     /**
      * Get cached version info for a route
      *
-     * @param string $key Cache key
-     * @param callable $callback Callback to generate value if not cached
-     * @return mixed
+     * @param  string  $key  Cache key
+     * @param  callable  $callback  Callback to generate value if not cached
      */
     public function remember(string $key, callable $callback): mixed
     {
@@ -28,7 +27,7 @@ class AttributeCacheService
             return $callback();
         }
 
-        $cacheKey = self::CACHE_PREFIX . $key;
+        $cacheKey = self::CACHE_PREFIX.$key;
 
         return Cache::remember($cacheKey, $this->ttl, $callback);
     }
@@ -46,7 +45,7 @@ class AttributeCacheService
      */
     public function forget(string $key): void
     {
-        Cache::forget(self::CACHE_PREFIX . $key);
+        Cache::forget(self::CACHE_PREFIX.$key);
     }
 
     /**

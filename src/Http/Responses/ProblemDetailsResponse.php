@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * RFC 7807 Problem Details for HTTP APIs
+ *
  * @see https://tools.ietf.org/html/rfc7807
  */
 class ProblemDetailsResponse extends JsonResponse

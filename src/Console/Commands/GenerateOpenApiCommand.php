@@ -51,7 +51,7 @@ class GenerateOpenApiCommand extends Command
         file_put_contents($output, $content);
 
         $this->components->info("OpenAPI documentation generated: {$output}");
-        $this->components->info("Total endpoints: ".count($openApiDoc['paths'] ?? []));
+        $this->components->info('Total endpoints: '.count($openApiDoc['paths'] ?? []));
 
         return self::SUCCESS;
     }

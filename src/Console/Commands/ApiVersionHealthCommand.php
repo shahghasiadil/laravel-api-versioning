@@ -50,7 +50,9 @@ class ApiVersionHealthCommand extends Command
 
         // Check 3: Detection methods
         $detectionMethods = $this->versionManager->getDetectionMethods();
-        $enabledMethods = array_filter($detectionMethods, fn ($config) => $config['enabled'] ?? false);
+        $enabledMethods = array_filter($detectionMethods, function (array $config): bool {
+            return (bool) ($config['enabled'] ?? false);
+        });
         if ($enabledMethods === []) {
             $this->components->warn('⚠ No detection methods enabled');
         } else {
@@ -58,8 +60,11 @@ class ApiVersionHealthCommand extends Command
         }
 
         // Check 4: Routes with version attributes
-        $routes = collect($this->router->getRoutes());
-        $versionedRoutes = $routes->filter(function ($route) {
+        $allRoutes = $this->router->getRoutes();
+        /** @var \Illuminate\Routing\Route[] $routeArray */
+        $routeArray = iterator_to_array($allRoutes, false);
+        $routes = collect($routeArray);
+        $versionedRoutes = $routes->filter(function (\Illuminate\Routing\Route $route): bool {
             $versions = $this->resolver->getAllVersionsForRoute($route);
 
             return $versions !== [];
@@ -91,6 +96,7 @@ class ApiVersionHealthCommand extends Command
         }
 
         // Check 6: Cache configuration
+        /** @var bool $cacheEnabled */
         $cacheEnabled = config('api-versioning.cache.enabled', true);
         if ($cacheEnabled) {
             $this->components->info('✓ Attribute caching enabled');

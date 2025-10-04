@@ -9,35 +9,46 @@ use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 
 class VersionManager
 {
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public function __construct(
         private readonly array $config
     ) {}
 
     public function detectVersionFromRequest(Request $request): string
     {
+        /** @var string|null $version */
         $version = null;
 
+        /** @var array<string, array<string, mixed>> $detectionMethods */
+        $detectionMethods = $this->config['detection_methods'];
+
         // Try each detection method in order
-        foreach ($this->config['detection_methods'] as $method => $config) {
-            if (! $config['enabled']) {
+        foreach ($detectionMethods as $method => $config) {
+            $enabled = $config['enabled'] ?? false;
+            if (! is_bool($enabled) || ! $enabled) {
                 continue;
             }
 
             $version = match ($method) {
-                'header' => $request->header($config['header_name']),
-                'query' => $request->query($config['parameter_name']),
+                'header' => $request->header((string) ($config['header_name'] ?? 'X-API-Version')),
+                'query' => $request->query((string) ($config['parameter_name'] ?? 'api-version')),
                 'path' => $this->extractVersionFromPath($request, $config),
                 'media_type' => $this->extractVersionFromMediaType($request, $config),
                 default => null
             };
 
-            if ($version !== null) {
+            if (is_string($version) && $version !== '') {
                 break;
             }
+            $version = null;
         }
 
         // Fall back to default version
-        $version = $version ?? $this->config['default_version'];
+        /** @var string $defaultVersion */
+        $defaultVersion = $this->config['default_version'];
+        $version = $version ?? $defaultVersion;
 
         if (! $this->isSupportedVersion($version)) {
             throw new UnsupportedVersionException(
@@ -50,10 +61,14 @@ class VersionManager
         return $version;
     }
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     private function extractVersionFromPath(Request $request, array $config): ?string
     {
         $path = $request->path();
-        $prefix = $config['prefix'];
+        /** @var string $prefix */
+        $prefix = $config['prefix'] ?? 'api/v';
 
         // Handle various path patterns:
         // - api/v1.0/users
@@ -62,22 +77,27 @@ class VersionManager
         // - v1.0/users (without api prefix)
         $pattern = '#^'.preg_quote($prefix, '#').'(\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)(?:/|$)#';
 
-        if (preg_match($pattern, $path, $matches)) {
+        if (preg_match($pattern, $path, $matches) === 1) {
             return $matches[1];
         }
 
         return null;
     }
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     private function extractVersionFromMediaType(Request $request, array $config): ?string
     {
         $accept = $request->header('Accept');
-        if ($accept === null) {
+        if (! is_string($accept) || $accept === '') {
             return null;
         }
 
-        $pattern = str_replace('%s', '(\d+(?:\.\d+)?)', preg_quote($config['format'], '#'));
-        if (preg_match('#'.$pattern.'#', $accept, $matches)) {
+        /** @var string $format */
+        $format = $config['format'] ?? 'application/vnd.api+json;version=%s';
+        $pattern = str_replace('%s', '(\d+(?:\.\d+)?)', preg_quote($format, '#'));
+        if (preg_match('#'.$pattern.'#', $accept, $matches) === 1) {
             return $matches[1];
         }
 
@@ -86,21 +106,39 @@ class VersionManager
 
     public function isSupportedVersion(string $version): bool
     {
-        return in_array($version, $this->config['supported_versions'], true);
+        /** @var string[] $supportedVersions */
+        $supportedVersions = $this->config['supported_versions'];
+
+        return in_array($version, $supportedVersions, true);
     }
 
+    /**
+     * @return string[]
+     */
     public function getSupportedVersions(): array
     {
-        return $this->config['supported_versions'];
+        /** @var string[] $supportedVersions */
+        $supportedVersions = $this->config['supported_versions'];
+
+        return $supportedVersions;
     }
 
     public function getDefaultVersion(): string
     {
-        return $this->config['default_version'];
+        /** @var string $defaultVersion */
+        $defaultVersion = $this->config['default_version'];
+
+        return $defaultVersion;
     }
 
+    /**
+     * @return array<string, array<string, mixed>>
+     */
     public function getDetectionMethods(): array
     {
-        return $this->config['detection_methods'];
+        /** @var array<string, array<string, mixed>> $detectionMethods */
+        $detectionMethods = $this->config['detection_methods'];
+
+        return $detectionMethods;
     }
 }

@@ -21,6 +21,9 @@ class AttributeApiVersionMiddleware
         private readonly AttributeVersionResolver $attributeResolver
     ) {}
 
+    /**
+     * @param  \Closure(\Illuminate\Http\Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         try {
@@ -93,6 +96,7 @@ class AttributeApiVersionMiddleware
 
     private function createErrorResponse(UnsupportedVersionException $e): ProblemDetailsResponse
     {
+        /** @var string|null $documentationUrl */
         $documentationUrl = config('api-versioning.documentation.base_url');
 
         return ProblemDetailsResponse::unsupportedVersion(

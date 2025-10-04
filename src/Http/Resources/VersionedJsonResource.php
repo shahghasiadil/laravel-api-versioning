@@ -35,9 +35,13 @@ abstract class VersionedJsonResource extends JsonResource
      */
     protected function callVersionMethod(string $version, Request $request): array
     {
+        /** @var array<string, mixed> $config */
         $config = config('api-versioning', []);
+        /** @var array<string, string> $versionMapping */
         $versionMapping = $config['version_method_mapping'] ?? [];
+        /** @var array<string, string> $inheritance */
         $inheritance = $config['version_inheritance'] ?? [];
+        /** @var string $defaultMethod */
         $defaultMethod = $config['default_method'] ?? 'toArrayDefault';
 
         // Handle default version request

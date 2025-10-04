@@ -35,7 +35,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
 
             return new AttributeCacheService(
                 enabled: $config['enabled'] ?? true,
-                ttl: $config['ttl'] ?? 3600
+                ttl: (int) ($config['ttl'] ?? 3600)
             );
         });
 

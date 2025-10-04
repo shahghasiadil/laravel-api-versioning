@@ -90,7 +90,7 @@ class ApiVersionsCommand extends Command
             if ($this->option('json')) {
                 $this->line(json_encode(['routes' => [], 'supported_versions' => $this->versionManager->getSupportedVersions()], JSON_PRETTY_PRINT));
             } else {
-                $this->components->info('No matching routes found.');
+                $this->info('No matching routes found.');
             }
 
             return self::SUCCESS;
@@ -120,8 +120,8 @@ class ApiVersionsCommand extends Command
         $this->table($headers, $rows);
 
         $this->newLine();
-        $this->components->info('Supported API Versions: '.implode(', ', $this->versionManager->getSupportedVersions()));
-        $this->components->info('Total Routes: '.count($rows));
+        $this->info('Supported API Versions: '.implode(', ', $this->versionManager->getSupportedVersions()));
+        $this->info('Total Routes: '.count($rows));
 
         return self::SUCCESS;
     }

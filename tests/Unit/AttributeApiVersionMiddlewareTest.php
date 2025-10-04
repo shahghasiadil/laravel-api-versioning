@@ -178,8 +178,9 @@ describe('error handling', function () {
         expect($result->getStatusCode())->toBe(400);
 
         $data = $result->getData(true);
-        expect($data['error'])->toBe('Unsupported API Version');
-        expect($data['message'])->toBe("API version '3.0' is not supported for this endpoint.");
+        expect($data['title'])->toBe('Unsupported API Version');
+        expect($data['detail'])->toBe("API version '3.0' is not supported for this endpoint.");
+        expect($data['status'])->toBe(400);
         expect($data['requested_version'])->toBe('3.0');
         expect($data['supported_versions'])->toBe(['1.0', '2.0', '2.1']);
         expect($data['endpoint_versions'])->toBe(['1.0', '2.0']);
@@ -211,8 +212,9 @@ describe('error handling', function () {
         expect($result->getStatusCode())->toBe(400);
 
         $data = $result->getData(true);
-        expect($data['error'])->toBe('Unsupported API Version');
-        expect($data['message'])->toBe("API version '4.0' is not supported.");
+        expect($data['title'])->toBe('Unsupported API Version');
+        expect($data['detail'])->toBe("API version '4.0' is not supported for this endpoint.");
+        expect($data['status'])->toBe(400);
         expect($data['requested_version'])->toBe('4.0');
         expect($data['supported_versions'])->toBe(['1.0', '2.0']);
     });
@@ -226,18 +228,15 @@ describe('error handling', function () {
             ->once()
             ->andReturn('2.0');
 
-        $this->versionManager->shouldReceive('getSupportedVersions')
-            ->once()
-            ->andReturn(['1.0', '2.0']);
-
         $result = $this->middleware->handle($request, fn () => new Response);
 
         expect($result)->toBeInstanceOf(JsonResponse::class);
-        expect($result->getStatusCode())->toBe(400);
+        expect($result->getStatusCode())->toBe(404);
 
         $data = $result->getData(true);
-        expect($data['error'])->toBe('Unsupported API Version');
-        expect($data['message'])->toBe('Route not found');
+        expect($data['title'])->toBe('Route Not Found');
+        expect($data['detail'])->toBe('Route not found');
+        expect($data['status'])->toBe(404);
     });
 });
 

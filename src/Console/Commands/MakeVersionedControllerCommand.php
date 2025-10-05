@@ -39,9 +39,13 @@ class MakeVersionedControllerCommand extends GeneratorCommand
     {
         $stub = $this->files->get($this->getStub());
 
-        $version = $this->option('api-version') ?? '1.0';
+        /** @var string|null $apiVersion */
+        $apiVersion = $this->option('api-version');
+        $version = $apiVersion ?? '1.0';
         $isDeprecated = (bool) $this->option('deprecated');
+        /** @var string|null $sunsetDate */
         $sunsetDate = $this->option('sunset');
+        /** @var string|null $replacedBy */
         $replacedBy = $this->option('replaced-by');
 
         $replacements = [

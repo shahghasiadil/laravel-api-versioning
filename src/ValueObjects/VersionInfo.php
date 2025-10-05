@@ -13,6 +13,9 @@ class VersionInfo
         public readonly ?string $replacedBy = null
     ) {}
 
+    /**
+     * @return array{version: string, is_neutral: bool, is_deprecated: bool, deprecation_message: string|null, sunset_date: string|null, replaced_by: string|null}
+     */
     public function toArray(): array
     {
         return [

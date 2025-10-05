@@ -6,10 +6,14 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
 class VersionConfigService
 {
+    /**
+     * @var array<string, mixed>
+     */
     private readonly array $config;
 
     public function __construct()
     {
+        /** @var array<string, mixed> $config */
         $config = config('api-versioning', []);
         $this->config = is_array($config) ? $config : [];
     }
@@ -19,13 +23,17 @@ class VersionConfigService
      */
     public function getMethodForVersion(string $version): string
     {
+        /** @var array<string, string> $versionMapping */
         $versionMapping = $this->config['version_method_mapping'] ?? [];
 
         if (isset($versionMapping[$version])) {
             return $versionMapping[$version];
         }
 
-        return $this->config['default_method'] ?? 'toArrayDefault';
+        /** @var string $defaultMethod */
+        $defaultMethod = $this->config['default_method'] ?? 'toArrayDefault';
+
+        return $defaultMethod;
     }
 
     /**
@@ -37,6 +45,7 @@ class VersionConfigService
     {
         $chain = [];
         $visited = [];
+        /** @var array<string, string> $inheritance */
         $inheritance = $this->config['version_inheritance'] ?? [];
         $currentVersion = $version;
 
@@ -68,7 +77,10 @@ class VersionConfigService
      */
     public function getSupportedVersions(): array
     {
-        return $this->config['supported_versions'] ?? [];
+        /** @var string[] $supportedVersions */
+        $supportedVersions = $this->config['supported_versions'] ?? [];
+
+        return $supportedVersions;
     }
 
     /**
@@ -76,6 +88,7 @@ class VersionConfigService
      */
     public function hasVersionMapping(string $version): bool
     {
+        /** @var array<string, string> $versionMapping */
         $versionMapping = $this->config['version_method_mapping'] ?? [];
 
         return isset($versionMapping[$version]);
@@ -88,7 +101,10 @@ class VersionConfigService
      */
     public function getVersionMappings(): array
     {
-        return $this->config['version_method_mapping'] ?? [];
+        /** @var array<string, string> $versionMapping */
+        $versionMapping = $this->config['version_method_mapping'] ?? [];
+
+        return $versionMapping;
     }
 
     /**
@@ -98,11 +114,17 @@ class VersionConfigService
      */
     public function getVersionInheritance(): array
     {
-        return $this->config['version_inheritance'] ?? [];
+        /** @var array<string, string> $inheritance */
+        $inheritance = $this->config['version_inheritance'] ?? [];
+
+        return $inheritance;
     }
 
     public function getDefaultMethod(): string
     {
-        return $this->config['default_method'] ?? 'toArrayDefault';
+        /** @var string $defaultMethod */
+        $defaultMethod = $this->config['default_method'] ?? 'toArrayDefault';
+
+        return $defaultMethod;
     }
 }

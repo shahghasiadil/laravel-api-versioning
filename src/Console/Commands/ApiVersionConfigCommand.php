@@ -24,14 +24,15 @@ class ApiVersionConfigCommand extends Command
 
     public function handle(): int
     {
-        if ($this->option('show')) {
+        if ((bool) $this->option('show')) {
             $this->showConfiguration();
 
             return self::SUCCESS;
         }
 
+        /** @var string|null $addVersion */
         $addVersion = $this->option('add-version');
-        if (is_string($addVersion)) {
+        if (is_string($addVersion) && $addVersion !== '') {
             $this->addVersionMapping($addVersion);
 
             return self::SUCCESS;
@@ -72,9 +73,13 @@ class ApiVersionConfigCommand extends Command
 
     private function addVersionMapping(string $version): void
     {
-        $method = $this->option('method');
-        if (! is_string($method)) {
+        /** @var string|null $methodOption */
+        $methodOption = $this->option('method');
+        if (! is_string($methodOption)) {
+            /** @var string|null $method */
             $method = $this->ask('Method name for version '.$version);
+        } else {
+            $method = $methodOption;
         }
 
         if (! is_string($method) || $method === '') {

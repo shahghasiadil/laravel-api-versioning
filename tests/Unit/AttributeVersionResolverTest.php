@@ -3,6 +3,7 @@
 use Illuminate\Routing\Route;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\V1UserController;
+use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
 
@@ -19,7 +20,8 @@ beforeEach(function () {
     ];
 
     $this->versionManager = new VersionManager($config);
-    $this->resolver = new AttributeVersionResolver($this->versionManager);
+    $this->cache = new AttributeCacheService(enabled: false, ttl: 3600); // Disable cache for tests
+    $this->resolver = new AttributeVersionResolver($this->versionManager, $this->cache);
 });
 
 test('resolves version from controller attribute', function () {

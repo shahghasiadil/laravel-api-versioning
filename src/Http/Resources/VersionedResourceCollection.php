@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Resources\Json\ResourceCollection;
 use ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
 
-abstract class VersionedJsonResource extends JsonResource
+abstract class VersionedResourceCollection extends ResourceCollection
 {
     use HasApiVersionAttributes;
 
     /**
-     * Transform the resource into an array.
+     * The resource that this collection wraps
+     *
+     * @var string
+     */
+    public $collects;
+
+    /**
+     * Transform the resource collection into an array
      *
      * @return array<string, mixed>
      */
@@ -35,14 +42,10 @@ abstract class VersionedJsonResource extends JsonResource
      */
     protected function callVersionMethod(string $version, Request $request): array
     {
-        /** @var array<string, mixed> $config */
         $config = config('api-versioning', []);
-        /** @var array<string, string> $versionMapping */
         $versionMapping = $config['version_method_mapping'] ?? [];
-        /** @var array<string, string> $inheritance */
         $inheritance = $config['version_inheritance'] ?? [];
-        /** @var string $defaultMethod */
-        $defaultMethod = $config['default_method'] ?? 'toArrayDefault';
+        $defaultMethod = 'toArrayDefault';
 
         // Handle default version request
         if ($version === 'default') {
@@ -83,7 +86,7 @@ abstract class VersionedJsonResource extends JsonResource
     }
 
     /**
-     * Call method if it exists, otherwise return empty array
+     * Call method if it exists, otherwise return collection data
      *
      * @return array<string, mixed>
      */
@@ -95,10 +98,10 @@ abstract class VersionedJsonResource extends JsonResource
             return is_array($result) ? $result : [];
         }
 
-        // Last resort - return basic resource array
-        $resourceArray = $this->resource->toArray();
-
-        return is_array($resourceArray) ? $resourceArray : [];
+        // Default: return collection as data array
+        return [
+            'data' => $this->collection,
+        ];
     }
 
     /**
@@ -109,16 +112,29 @@ abstract class VersionedJsonResource extends JsonResource
     public function with(Request $request): array
     {
         return [
-            'meta' => [
-                'version' => $this->getCurrentApiVersion(),
-                'deprecated' => $this->isVersionDeprecated(),
-            ],
+            'meta' => array_merge(
+                $this->getMeta($request),
+                [
+                    'version' => $this->getCurrentApiVersion(),
+                    'deprecated' => $this->isVersionDeprecated(),
+                ]
+            ),
         ];
     }
 
     /**
-     * Override these methods in your resource classes as needed
-     * The configuration will determine which ones are called
+     * Get additional metadata for the collection
+     * Override this method in child classes to add custom metadata
+     *
+     * @return array<string, mixed>
+     */
+    protected function getMeta(Request $request): array
+    {
+        return [];
+    }
+
+    /**
+     * Override these methods in your resource collection classes as needed
      *
      * @return array<string, mixed>
      */

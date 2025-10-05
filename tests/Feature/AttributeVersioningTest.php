@@ -59,7 +59,8 @@ test('unsupported version returns 400', function () {
 
     $response->assertStatus(400)
         ->assertJson([
-            'error' => 'Unsupported API Version',
+            'title' => 'Unsupported API Version',
+            'status' => 400,
         ]);
 });
 

@@ -18,37 +18,6 @@ A powerful and elegant attribute-based API versioning solution for Laravel appli
 - 📊 **Enhanced Artisan commands** - Route inspection, health checks, and controller generation
 - ⚡ **Performance optimized** - Intelligent caching with 87% faster response times
 - 🔢 **Version comparison** - Built-in utilities for semantic version comparison
-- 📋 **RFC 7807 compliance** - Standards-compliant error responses
-
-## 🆕 What's New in v1.1.0
-
-### ⚡ Performance Enhancements
-- **Intelligent Caching** - Attribute resolution cache with 87% performance improvement
-- **Configurable TTL** - Control cache duration via environment variables
-- **Cache Management** - New `api:cache:clear` command
-
-### 📋 Standards Compliance
-- **RFC 7807 Error Responses** - Standards-compliant Problem Details format
-- **Better API Client Integration** - Machine-readable error responses
-
-### 🔢 Version Comparison
-- **VersionComparator Service** - Comprehensive version comparison utilities
-- **Semantic Version Support** - Constraints like `^2.0`, `~1.5`, `>=2.0`
-- **Helper Methods** - Built-in helpers in controllers and resources
-
-### 📊 Enhanced Commands
-- **JSON Output** - `--json` flag for CI/CD integration
-- **Health Check** - New `api:version:health` command
-- **Compact Mode** - `--compact` flag for cleaner output
-
-### 📦 Resource Collections
-- **VersionedResourceCollection** - Proper collection versioning support
-- **Metadata Helpers** - Built-in pagination and meta info support
-
-### 🛣️ Improved Path Detection
-- **Better Regex** - Handles complex version patterns
-- **Pre-release Support** - Versions like `v2.0-beta`, `v2.0-rc1`
-- **Edge Cases** - Better handling of unusual path structures
 
 ## 📋 Requirements
 

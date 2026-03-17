@@ -87,8 +87,8 @@ class AttributeApiVersionMiddleware
             }
         }
 
-        // Add route-specific supported versions
-        $routeVersions = $this->attributeResolver->getAllVersionsForRoute($route);
+        // Route versions are embedded in VersionInfo to avoid a second resolver call
+        $routeVersions = $versionInfo->routeVersions ?? $this->attributeResolver->getAllVersionsForRoute($route);
         if ($routeVersions !== []) {
             $response->headers->set('X-API-Route-Versions', implode(', ', $routeVersions));
         }

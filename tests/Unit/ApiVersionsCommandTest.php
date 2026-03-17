@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\OutputStyle;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router;
@@ -7,6 +8,8 @@ use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionsCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 beforeEach(function () {
     $this->router = Mockery::mock(Router::class);
@@ -64,14 +67,14 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0', '2.1']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        $input = new ArrayInput([]);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -127,15 +130,15 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
         // Test with route filter
-        $input = new \Symfony\Component\Console\Input\ArrayInput(['--route' => 'users']);
+        $input = new ArrayInput(['--route' => 'users']);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -169,14 +172,14 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput(['--api-version' => '2.0']);
+        $input = new ArrayInput(['--api-version' => '2.0']);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -221,14 +224,14 @@ describe('route filtering and display', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput(['--deprecated' => true]);
+        $input = new ArrayInput(['--deprecated' => true]);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -282,14 +285,14 @@ describe('deprecation information handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        $input = new ArrayInput([]);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -320,14 +323,14 @@ describe('deprecation information handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        $input = new ArrayInput([]);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -365,14 +368,14 @@ describe('error handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        $input = new ArrayInput([]);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -389,14 +392,14 @@ describe('error handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        $input = new ArrayInput([]);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 
@@ -423,15 +426,15 @@ describe('error handling', function () {
         $this->versionManager->shouldReceive('getSupportedVersions')
             ->andReturn(['1.0', '2.0']);
 
-        $output = new \Symfony\Component\Console\Output\BufferedOutput;
-        $style = new \Illuminate\Console\OutputStyle(
-            new \Symfony\Component\Console\Input\ArrayInput([]),
+        $output = new BufferedOutput;
+        $style = new OutputStyle(
+            new ArrayInput([]),
             $output
         );
         $this->command->setOutput($style);
 
         // Filter for routes containing 'users' but only 'posts' exists
-        $input = new \Symfony\Component\Console\Input\ArrayInput(['--route' => 'users']);
+        $input = new ArrayInput(['--route' => 'users']);
         $input->bind($this->command->getDefinition());
         $this->command->setInput($input);
 

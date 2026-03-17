@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
@@ -31,17 +32,17 @@ class ApiVersionsCommand extends Command
     public function handle(): int
     {
         $allRoutes = $this->router->getRoutes();
-        /** @var \Illuminate\Routing\Route[] $routeArray */
+        /** @var Route[] $routeArray */
         $routeArray = iterator_to_array($allRoutes, false);
 
-        $routes = collect($routeArray)->filter(function (\Illuminate\Routing\Route $route): bool {
+        $routes = collect($routeArray)->filter(function (Route $route): bool {
             return str_contains($route->uri(), 'api/');
         });
 
         /** @var string|null $routeFilter */
         $routeFilter = $this->option('route');
         if (is_string($routeFilter) && $routeFilter !== '') {
-            $routes = $routes->filter(fn (\Illuminate\Routing\Route $route): bool => str_contains($route->uri(), $routeFilter));
+            $routes = $routes->filter(fn (Route $route): bool => str_contains($route->uri(), $routeFilter));
         }
 
         $headers = ['Method', 'URI', 'Controller', 'Versions', 'Deprecated', 'Sunset Date'];

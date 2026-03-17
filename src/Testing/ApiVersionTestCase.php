@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Testing;
 
+use Illuminate\Http\Response;
 use Illuminate\Testing\TestResponse;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 use ShahGhasiAdil\LaravelApiVersioning\ApiVersioningServiceProvider;
@@ -62,7 +63,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
      * Call the given URI with API version header
      *
      * @param  array<string, string>  $headers
-     * @return TestResponse<\Illuminate\Http\Response>
+     * @return TestResponse<Response>
      */
     protected function getWithVersion(string $uri, string $version, array $headers = []): TestResponse
     {
@@ -75,7 +76,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
      * Call the given URI with API version query parameter
      *
      * @param  array<string, string>  $headers
-     * @return TestResponse<\Illuminate\Http\Response>
+     * @return TestResponse<Response>
      */
     protected function getWithVersionQuery(string $uri, string $version, array $headers = []): TestResponse
     {
@@ -89,7 +90,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
      *
      * @param  array<string, mixed>  $data
      * @param  array<string, string>  $headers
-     * @return TestResponse<\Illuminate\Http\Response>
+     * @return TestResponse<Response>
      */
     protected function postWithVersion(string $uri, array $data, string $version, array $headers = []): TestResponse
     {
@@ -103,7 +104,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
      *
      * @param  array<string, mixed>  $data
      * @param  array<string, string>  $headers
-     * @return TestResponse<\Illuminate\Http\Response>
+     * @return TestResponse<Response>
      */
     protected function putWithVersion(string $uri, array $data, string $version, array $headers = []): TestResponse
     {
@@ -116,7 +117,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
      * Make a DELETE request with API version
      *
      * @param  array<string, string>  $headers
-     * @return TestResponse<\Illuminate\Http\Response>
+     * @return TestResponse<Response>
      */
     protected function deleteWithVersion(string $uri, string $version, array $headers = []): TestResponse
     {
@@ -128,7 +129,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     /**
      * Assert response has correct version headers
      *
-     * @param  TestResponse<\Illuminate\Http\Response>  $response
+     * @param  TestResponse<Response>  $response
      */
     protected function assertApiVersion(TestResponse $response, string $expectedVersion): static
     {
@@ -140,7 +141,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     /**
      * Assert response indicates deprecation
      *
-     * @param  TestResponse<\Illuminate\Http\Response>  $response
+     * @param  TestResponse<Response>  $response
      */
     protected function assertApiVersionDeprecated(TestResponse $response, ?string $sunsetDate = null): static
     {
@@ -156,7 +157,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     /**
      * Assert response supports specific versions
      *
-     * @param  TestResponse<\Illuminate\Http\Response>  $response
+     * @param  TestResponse<Response>  $response
      * @param  string[]  $versions
      */
     protected function assertSupportedVersions(TestResponse $response, array $versions): static
@@ -169,7 +170,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     /**
      * Assert response indicates version is not deprecated
      *
-     * @param  TestResponse<\Illuminate\Http\Response>  $response
+     * @param  TestResponse<Response>  $response
      */
     protected function assertApiVersionNotDeprecated(TestResponse $response): static
     {
@@ -181,7 +182,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     /**
      * Assert response has route-specific version headers
      *
-     * @param  TestResponse<\Illuminate\Http\Response>  $response
+     * @param  TestResponse<Response>  $response
      * @param  string[]  $versions
      */
     protected function assertRouteVersions(TestResponse $response, array $versions): static
@@ -194,7 +195,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     /**
      * Assert response has deprecation message
      *
-     * @param  TestResponse<\Illuminate\Http\Response>  $response
+     * @param  TestResponse<Response>  $response
      */
     protected function assertDeprecationMessage(TestResponse $response, string $message): static
     {
@@ -206,7 +207,7 @@ abstract class ApiVersionTestCase extends BaseTestCase
     /**
      * Assert response has replacement version
      *
-     * @param  TestResponse<\Illuminate\Http\Response>  $response
+     * @param  TestResponse<Response>  $response
      */
     protected function assertReplacedBy(TestResponse $response, string $version): static
     {

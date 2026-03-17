@@ -5,16 +5,23 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
 use Illuminate\Routing\Route;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\MapToApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 
 class AttributeVersionResolver
 {
+    /**
+     * In-process cache to avoid repeated cache-driver I/O within the same PHP process.
+     *
+     * @var array<string, VersionInfo|null>
+     */
+    private static array $memoryCache = [];
+
     public function __construct(
         private readonly VersionManager $versionManager,
         private readonly AttributeCacheService $cache
@@ -30,96 +37,65 @@ class AttributeVersionResolver
         }
 
         $controllerClass = get_class($controller);
+        $memoryKey = "{$controllerClass}@{$action}:{$requestedVersion}";
+
+        if (array_key_exists($memoryKey, self::$memoryCache)) {
+            return self::$memoryCache[$memoryKey];
+        }
+
         $cacheKey = $this->cache->generateRouteKey($controllerClass, $action, $requestedVersion);
 
-        return $this->cache->remember($cacheKey, function () use ($controller, $action, $requestedVersion) {
-            $controllerClass = new ReflectionClass($controller);
-            $actionMethod = $controllerClass->getMethod($action);
+        $result = $this->cache->remember($cacheKey, function () use ($controller, $action, $requestedVersion) {
+            $reflectionClass = new ReflectionClass($controller);
+            $reflectionMethod = $reflectionClass->getMethod($action);
 
-            // Check if method is version neutral
-            if ($this->hasAttribute($actionMethod, ApiVersionNeutral::class) ||
-                $this->hasAttribute($controllerClass, ApiVersionNeutral::class)) {
-                return $this->createVersionInfo($requestedVersion, true);
+            // Single pass: check neutral on method and class
+            if ($reflectionMethod->getAttributes(ApiVersionNeutral::class) !== [] ||
+                $reflectionClass->getAttributes(ApiVersionNeutral::class) !== []) {
+                return $this->createVersionInfo(
+                    $requestedVersion,
+                    true,
+                    routeVersions: $this->versionManager->getSupportedVersions()
+                );
             }
 
-            // Get method-level version mappings
-            $methodVersions = $this->getVersionsFromAttributes($actionMethod, MapToApiVersion::class);
+            // Single pass per reflector using IS_INSTANCEOF to fetch both
+            // ApiVersion and MapToApiVersion in one getAttributes() call
+            $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
+            $methodVersions = $this->flattenVersionAttributes($methodVersionAttrs);
+
             if ($methodVersions !== [] && in_array($requestedVersion, $methodVersions, true)) {
-                return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
+                return $this->createVersionInfo(
+                    $requestedVersion,
+                    false,
+                    $reflectionMethod,
+                    $reflectionClass,
+                    routeVersions: $methodVersions
+                );
             }
 
-            // Get method-level API versions
-            $methodApiVersions = $this->getVersionsFromAttributes($actionMethod, ApiVersion::class);
-            if ($methodApiVersions !== [] && in_array($requestedVersion, $methodApiVersions, true)) {
-                return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
-            }
+            // Only look at class-level if method had no version attributes
+            if ($methodVersions === []) {
+                $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
+                $classVersions = $this->flattenVersionAttributes($classVersionAttrs);
 
-            // Get controller-level versions
-            $controllerVersions = $this->getVersionsFromAttributes($controllerClass, ApiVersion::class);
-            if ($controllerVersions !== [] && in_array($requestedVersion, $controllerVersions, true)) {
-                return $this->createVersionInfo($requestedVersion, false, $actionMethod, $controllerClass);
+                if ($classVersions !== [] && in_array($requestedVersion, $classVersions, true)) {
+                    return $this->createVersionInfo(
+                        $requestedVersion,
+                        false,
+                        $reflectionMethod,
+                        $reflectionClass,
+                        routeVersions: $classVersions
+                    );
+                }
             }
 
             return null;
         });
-    }
 
-    private function createVersionInfo(
-        string $version,
-        bool $isNeutral,
-        ?ReflectionMethod $method = null,
-        ?ReflectionClass $class = null
-    ): VersionInfo {
-        $deprecated = null;
+        self::$memoryCache[$memoryKey] = $result;
 
-        if ($method !== null) {
-            $deprecated = $this->getDeprecationInfo($method) ?? $this->getDeprecationInfo($class);
-        } elseif ($class !== null) {
-            $deprecated = $this->getDeprecationInfo($class);
-        }
-
-        return new VersionInfo(
-            version: $version,
-            isNeutral: $isNeutral,
-            isDeprecated: $deprecated !== null,
-            deprecationMessage: $deprecated?->message,
-            sunsetDate: $deprecated?->sunsetDate,
-            replacedBy: $deprecated?->replacedBy
-        );
-    }
-
-    private function hasAttribute(ReflectionClass|ReflectionMethod $reflection, string $attributeClass): bool
-    {
-        return $reflection->getAttributes($attributeClass) !== [];
-    }
-
-    /**
-     * @return string[]
-     */
-    private function getVersionsFromAttributes(ReflectionClass|ReflectionMethod $reflection, string $attributeClass): array
-    {
-        $versions = [];
-        $attributes = $reflection->getAttributes($attributeClass);
-
-        foreach ($attributes as $attribute) {
-            $instance = $attribute->newInstance();
-            if (method_exists($instance, 'getVersions')) {
-                $versions = array_merge($versions, $instance->getVersions());
-            }
-        }
-
-        return array_unique($versions);
-    }
-
-    private function getDeprecationInfo(ReflectionClass|ReflectionMethod|null $reflection): ?Deprecated
-    {
-        if ($reflection === null) {
-            return null;
-        }
-
-        $attributes = $reflection->getAttributes(Deprecated::class);
-
-        return count($attributes) > 0 ? $attributes[0]->newInstance() : null;
+        return $result;
     }
 
     /**
@@ -138,27 +114,90 @@ class AttributeVersionResolver
         $cacheKey = $this->cache->generateRouteVersionsKey($controllerClass, $action);
 
         return $this->cache->remember($cacheKey, function () use ($controller, $action) {
-            $controllerClass = new ReflectionClass($controller);
-            $actionMethod = $controllerClass->getMethod($action);
+            $reflectionClass = new ReflectionClass($controller);
+            $reflectionMethod = $reflectionClass->getMethod($action);
 
-            // If version neutral, return all supported versions
-            if ($this->hasAttribute($actionMethod, ApiVersionNeutral::class) ||
-                $this->hasAttribute($controllerClass, ApiVersionNeutral::class)) {
+            if ($reflectionMethod->getAttributes(ApiVersionNeutral::class) !== [] ||
+                $reflectionClass->getAttributes(ApiVersionNeutral::class) !== []) {
                 return $this->versionManager->getSupportedVersions();
             }
 
-            $versions = [];
+            // Single pass: get all HasVersions attributes from method
+            $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
+            $methodVersions = $this->flattenVersionAttributes($methodVersionAttrs);
 
-            // Method-level versions
-            $versions = array_merge($versions, $this->getVersionsFromAttributes($actionMethod, MapToApiVersion::class));
-            $versions = array_merge($versions, $this->getVersionsFromAttributes($actionMethod, ApiVersion::class));
-
-            // Controller-level versions
-            if ($versions === []) {
-                $versions = $this->getVersionsFromAttributes($controllerClass, ApiVersion::class);
+            if ($methodVersions !== []) {
+                return $methodVersions;
             }
 
-            return array_unique($versions);
+            // Fall back to class-level
+            $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
+
+            return $this->flattenVersionAttributes($classVersionAttrs);
         });
+    }
+
+    /**
+     * Reset the in-process memory cache (useful in tests).
+     */
+    public static function resetMemoryCache(): void
+    {
+        self::$memoryCache = [];
+    }
+
+    private function createVersionInfo(
+        string $version,
+        bool $isNeutral,
+        ?ReflectionMethod $method = null,
+        ?ReflectionClass $class = null,
+        ?array $routeVersions = null,
+    ): VersionInfo {
+        $deprecated = null;
+
+        if ($method !== null) {
+            $deprecated = $this->getDeprecationInfo($method) ?? $this->getDeprecationInfo($class);
+        } elseif ($class !== null) {
+            $deprecated = $this->getDeprecationInfo($class);
+        }
+
+        return new VersionInfo(
+            version: $version,
+            isNeutral: $isNeutral,
+            isDeprecated: $deprecated !== null,
+            deprecationMessage: $deprecated?->message,
+            sunsetDate: $deprecated?->sunsetDate,
+            replacedBy: $deprecated?->replacedBy,
+            routeVersions: $routeVersions,
+        );
+    }
+
+    private function getDeprecationInfo(ReflectionClass|ReflectionMethod|null $reflection): ?Deprecated
+    {
+        if ($reflection === null) {
+            return null;
+        }
+
+        $attributes = $reflection->getAttributes(Deprecated::class);
+
+        return $attributes !== [] ? $attributes[0]->newInstance() : null;
+    }
+
+    /**
+     * Flatten a list of ReflectionAttribute instances (all implementing HasVersions)
+     * into a unique, merged array of version strings.
+     *
+     * @param  \ReflectionAttribute[]  $attributes
+     * @return string[]
+     */
+    private function flattenVersionAttributes(array $attributes): array
+    {
+        if ($attributes === []) {
+            return [];
+        }
+
+        return array_unique(array_merge(...array_map(
+            fn ($attr) => $attr->newInstance()->getVersions(),
+            $attributes
+        )));
     }
 }

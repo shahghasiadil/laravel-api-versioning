@@ -7,6 +7,13 @@ use ShahGhasiAdil\LaravelApiVersioning\ApiVersioningServiceProvider;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Declared to satisfy older testbench/Laravel versions that reference this
+     * static property from MakesHttpRequests without always declaring it first,
+     * which causes "Access to undeclared static property" on PHP 8.3+.
+     */
+    public static $latestResponse;
+
     protected function setUp(): void
     {
         parent::setUp();

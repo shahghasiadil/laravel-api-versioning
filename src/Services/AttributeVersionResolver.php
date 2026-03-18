@@ -193,7 +193,7 @@ class AttributeVersionResolver
      * Flatten a list of ReflectionAttribute instances (all implementing HasVersions)
      * into a unique, merged array of version strings.
      *
-     * @param  list<ReflectionAttribute<HasVersions>>  $attributes
+     * @param  ReflectionAttribute[]  $attributes
      * @return string[]
      */
     private function flattenVersionAttributes(array $attributes): array

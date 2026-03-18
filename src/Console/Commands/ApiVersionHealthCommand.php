@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
@@ -61,10 +62,10 @@ class ApiVersionHealthCommand extends Command
 
         // Check 4: Routes with version attributes
         $allRoutes = $this->router->getRoutes();
-        /** @var \Illuminate\Routing\Route[] $routeArray */
+        /** @var Route[] $routeArray */
         $routeArray = iterator_to_array($allRoutes, false);
         $routes = collect($routeArray);
-        $versionedRoutes = $routes->filter(function (\Illuminate\Routing\Route $route): bool {
+        $versionedRoutes = $routes->filter(function (Route $route): bool {
             $versions = $this->resolver->getAllVersionsForRoute($route);
 
             return $versions !== [];

@@ -45,6 +45,7 @@ class AttributeVersionResolver
 
         $cacheKey = $this->cache->generateRouteKey($controllerClass, $action, $requestedVersion);
 
+        /** @var VersionInfo|null $result */
         $result = $this->cache->remember($cacheKey, function () use ($controller, $action, $requestedVersion) {
             $reflectionClass = new ReflectionClass($controller);
             $reflectionMethod = $reflectionClass->getMethod($action);
@@ -113,7 +114,8 @@ class AttributeVersionResolver
         $controllerClass = get_class($controller);
         $cacheKey = $this->cache->generateRouteVersionsKey($controllerClass, $action);
 
-        return $this->cache->remember($cacheKey, function () use ($controller, $action) {
+        /** @var string[] $result */
+        $result = $this->cache->remember($cacheKey, function () use ($controller, $action) {
             $reflectionClass = new ReflectionClass($controller);
             $reflectionMethod = $reflectionClass->getMethod($action);
 
@@ -135,6 +137,8 @@ class AttributeVersionResolver
 
             return $this->flattenVersionAttributes($classVersionAttrs);
         });
+
+        return $result;
     }
 
     /**
@@ -145,6 +149,9 @@ class AttributeVersionResolver
         self::$memoryCache = [];
     }
 
+    /**
+     * @param  string[]|null  $routeVersions
+     */
     private function createVersionInfo(
         string $version,
         bool $isNeutral,
@@ -195,9 +202,15 @@ class AttributeVersionResolver
             return [];
         }
 
-        return array_unique(array_merge(...array_map(
-            fn ($attr) => $attr->newInstance()->getVersions(),
+        /** @var list<string[]> $versionArrays */
+        $versionArrays = array_map(
+            static fn ($attr) => $attr->newInstance()->getVersions(),
             $attributes
-        )));
+        );
+
+        /** @var string[] $merged */
+        $merged = array_merge(...$versionArrays);
+
+        return array_values(array_unique($merged));
     }
 }

@@ -4,6 +4,9 @@ namespace ShahGhasiAdil\LaravelApiVersioning\ValueObjects;
 
 class VersionInfo
 {
+    /**
+     * @param  string[]|null  $routeVersions
+     */
     public function __construct(
         public readonly string $version,
         public readonly bool $isNeutral = false,

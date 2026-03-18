@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
+use Closure;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Support\Facades\Cache;
 
@@ -27,9 +28,9 @@ class AttributeCacheService
      * `api_versioning` tag, enabling a precise flush via {@see flush()}.
      *
      * @param  string  $key  Cache key (without prefix)
-     * @param  callable  $callback  Callback to generate value if not cached
+     * @param  Closure(): mixed  $callback  Callback to generate value if not cached
      */
-    public function remember(string $key, callable $callback): mixed
+    public function remember(string $key, Closure $callback): mixed
     {
         if (! $this->enabled) {
             return $callback();

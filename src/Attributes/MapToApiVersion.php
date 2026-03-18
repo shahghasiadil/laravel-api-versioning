@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Attributes;
 
 use Attribute;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
 
 #[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
-class MapToApiVersion
+class MapToApiVersion implements HasVersions
 {
     /**
      * @var string[]

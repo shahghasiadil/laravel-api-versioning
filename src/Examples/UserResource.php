@@ -3,15 +3,16 @@
 namespace ShahGhasiAdil\LaravelApiVersioning\Examples;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedJsonResource;
 
 /**
  * @property int $id
  * @property string $name
  * @property string $email
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon $updated_at
- * @property \Illuminate\Support\Carbon|null $last_login
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property Carbon|null $last_login
  * @property string|null $avatar_url
  * @property string|null $bio
  * @property string|null $theme

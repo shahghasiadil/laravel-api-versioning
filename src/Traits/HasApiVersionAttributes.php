@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Traits;
 
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 
 trait HasApiVersionAttributes
@@ -67,7 +68,7 @@ trait HasApiVersionAttributes
             return false;
         }
 
-        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+        return app(VersionComparator::class)
             ->isGreaterThan($currentVersion, $version);
     }
 
@@ -81,7 +82,7 @@ trait HasApiVersionAttributes
             return false;
         }
 
-        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+        return app(VersionComparator::class)
             ->isGreaterThanOrEqual($currentVersion, $version);
     }
 
@@ -95,7 +96,7 @@ trait HasApiVersionAttributes
             return false;
         }
 
-        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+        return app(VersionComparator::class)
             ->isLessThan($currentVersion, $version);
     }
 
@@ -109,7 +110,7 @@ trait HasApiVersionAttributes
             return false;
         }
 
-        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+        return app(VersionComparator::class)
             ->isLessThanOrEqual($currentVersion, $version);
     }
 
@@ -123,7 +124,7 @@ trait HasApiVersionAttributes
             return false;
         }
 
-        return app(\ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator::class)
+        return app(VersionComparator::class)
             ->isBetween($currentVersion, $min, $max);
     }
 }

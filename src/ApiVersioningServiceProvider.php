@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning;
 
+use Illuminate\Config\Repository;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiCacheClearCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionConfigCommand;
@@ -26,8 +29,8 @@ class ApiVersioningServiceProvider extends ServiceProvider
             'api-versioning'
         );
 
-        $this->app->singleton(VersionManager::class, function (\Illuminate\Contracts\Foundation\Application $app): VersionManager {
-            /** @var \Illuminate\Config\Repository $configRepo */
+        $this->app->singleton(VersionManager::class, function (Application $app): VersionManager {
+            /** @var Repository $configRepo */
             $configRepo = $app->make('config');
             /** @var array<string, mixed> $config */
             $config = $configRepo->get('api-versioning', []);
@@ -35,8 +38,8 @@ class ApiVersioningServiceProvider extends ServiceProvider
             return new VersionManager($config);
         });
 
-        $this->app->singleton(AttributeCacheService::class, function (\Illuminate\Contracts\Foundation\Application $app): AttributeCacheService {
-            /** @var \Illuminate\Config\Repository $configRepo */
+        $this->app->singleton(AttributeCacheService::class, function (Application $app): AttributeCacheService {
+            /** @var Repository $configRepo */
             $configRepo = $app->make('config');
             /** @var array{enabled?: bool|string, ttl?: int|string} $config */
             $config = $configRepo->get('api-versioning.cache', []);
@@ -47,18 +50,18 @@ class ApiVersioningServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(AttributeVersionResolver::class, function (\Illuminate\Contracts\Foundation\Application $app): AttributeVersionResolver {
+        $this->app->singleton(AttributeVersionResolver::class, function (Application $app): AttributeVersionResolver {
             return new AttributeVersionResolver(
                 $app->make(VersionManager::class),
                 $app->make(AttributeCacheService::class)
             );
         });
 
-        $this->app->singleton(VersionConfigService::class, function (\Illuminate\Contracts\Foundation\Application $app): VersionConfigService {
+        $this->app->singleton(VersionConfigService::class, function (Application $app): VersionConfigService {
             return new VersionConfigService;
         });
 
-        $this->app->singleton(VersionComparator::class, function (\Illuminate\Contracts\Foundation\Application $app): VersionComparator {
+        $this->app->singleton(VersionComparator::class, function (Application $app): VersionComparator {
             return new VersionComparator;
         });
     }
@@ -69,7 +72,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
             __DIR__.'/../config/api-versioning.php' => config_path('api-versioning.php'),
         ], 'config');
 
-        /** @var \Illuminate\Routing\Router $router */
+        /** @var Router $router */
         $router = $this->app->make('router');
         $router->aliasMiddleware('api.version', AttributeApiVersionMiddleware::class);
 

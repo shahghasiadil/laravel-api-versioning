@@ -10,7 +10,8 @@ class VersionInfo
         public readonly bool $isDeprecated = false,
         public readonly ?string $deprecationMessage = null,
         public readonly ?string $sunsetDate = null,
-        public readonly ?string $replacedBy = null
+        public readonly ?string $replacedBy = null,
+        public readonly ?array $routeVersions = null,
     ) {}
 
     /**

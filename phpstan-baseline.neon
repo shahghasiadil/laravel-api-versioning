@@ -97,50 +97,14 @@ parameters:
 			path: src/Http/Responses/ProblemDetailsResponse.php
 
 		-
-			message: '#^Parameter \#3 \$callback of static method Illuminate\\Support\\Facades\\Cache\:\:remember\(\) expects Closure, callable\(\)\: mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Services/AttributeCacheService.php
-
-		-
 			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:createVersionInfo\(\) has parameter \$class with generic class ReflectionClass but does not specify its types\: T$#'
 			identifier: missingType.generics
 			count: 1
 			path: src/Services/AttributeVersionResolver.php
 
 		-
-			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:getAllVersionsForRoute\(\) should return array\<string\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
 			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:getDeprecationInfo\(\) has parameter \$reflection with generic class ReflectionClass but does not specify its types\: T$#'
 			identifier: missingType.generics
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:getVersionsFromAttributes\(\) has parameter \$reflection with generic class ReflectionClass but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:getVersionsFromAttributes\(\) should return array\<string\> but returns array\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:hasAttribute\(\) has parameter \$reflection with generic class ReflectionClass but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:resolveVersionForRoute\(\) should return ShahGhasiAdil\\LaravelApiVersioning\\ValueObjects\\VersionInfo\|null but returns mixed\.$#'
-			identifier: return.type
 			count: 1
 			path: src/Services/AttributeVersionResolver.php
 
@@ -166,12 +130,6 @@ parameters:
 			message: '#^Parameter \#1 \$objectOrClass of class ReflectionClass constructor expects class\-string\<T of object\>\|T of object, mixed given\.$#'
 			identifier: argument.type
 			count: 2
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Parameter \#2 \.\.\.\$arrays of function array_merge expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
 			path: src/Services/AttributeVersionResolver.php
 
 		-

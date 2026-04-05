@@ -9,7 +9,7 @@ Attribute-based API versioning for Laravel, with version detection, deprecation 
 ## Requirements
 
 - PHP 8.2+
-- Laravel 10, 11, or 12
+- Laravel 10, 11, 12 or 13
 
 ## Installation
 

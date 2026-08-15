@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Conventions;
 
+use Illuminate\Support\Str;
+
 /**
  * Fluent builder for conventions matched by URI pattern rather than
  * controller class, obtained via {@see ConventionBuilder::route()}.
@@ -13,7 +15,7 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Conventions;
  * `$c->route('api/webhooks/*')->isApiVersionNeutral()`.
  *
  * $pattern is matched against the route's URI with
- * {@see \Illuminate\Support\Str::is()} (`*` wildcards), the same syntax
+ * {@see Str::is()} (`*` wildcards), the same syntax
  * Laravel route groups and gates already use.
  */
 final class RouteConvention

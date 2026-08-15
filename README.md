@@ -113,6 +113,7 @@ curl -H "Accept: application/vnd.api+json;version=2.0" https://api.example.com/a
 
 - Controller and method level attributes (`ApiVersion`, `MapToApiVersion`)
 - Per-version deprecation, and advertising versions implemented elsewhere (`AdvertiseApiVersions`)
+- Deprecation telemetry events (`ApiVersionResolved`, `DeprecatedApiVersionUsed`)
 - Version-neutral endpoints (`ApiVersionNeutral`)
 - Deprecation metadata (`Deprecated` with message, sunset date, replacement)
 - Multiple version detection methods (header, query, path, media type)
@@ -361,6 +362,41 @@ $request->isApiVersionDeprecated();  // bool
 
 These return `null`/`false` until the `api.version` middleware has run for
 the current request.
+
+## Deprecation Telemetry Events
+
+The middleware dispatches two events, so you can measure real usage of a
+version before its sunset date arrives without touching every controller:
+
+```php
+use ShahGhasiAdil\LaravelApiVersioning\Events\ApiVersionResolved;
+use ShahGhasiAdil\LaravelApiVersioning\Events\DeprecatedApiVersionUsed;
+
+// Fired for every successful resolution, including version-neutral routes.
+class LogApiVersionUsage
+{
+    public function handle(ApiVersionResolved $event): void
+    {
+        Log::info('api.version.used', [
+            'version' => $event->versionInfo->version,
+            'path' => $event->request->path(),
+        ]);
+    }
+}
+
+// Fired in addition, only when the resolved version is deprecated.
+class AlertOnDeprecatedVersionUsage
+{
+    public function handle(DeprecatedApiVersionUsed $event): void
+    {
+        Metrics::increment("api.deprecated_version.{$event->versionInfo->version}");
+    }
+}
+```
+
+Both carry the current `Request` and the resolved `VersionInfo` (message,
+sunset date, replacement version). Neither fires when a version can't be
+resolved at all — only successful resolutions are worth measuring.
 
 ## Version Comparison Helpers
 

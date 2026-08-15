@@ -4,6 +4,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Event;
+use ShahGhasiAdil\LaravelApiVersioning\Events\ApiVersionResolved;
+use ShahGhasiAdil\LaravelApiVersioning\Events\DeprecatedApiVersionUsed;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
@@ -446,5 +449,71 @@ describe('RFC 8594 Sunset / RFC 8288 Link headers', function () {
         expect($result->headers->has('Link'))->toBeFalse();
         // The legacy header is unaffected by the sunset_policies feature.
         expect($result->headers->get('X-API-Sunset'))->toBe('2026-06-30');
+    });
+});
+
+describe('deprecation telemetry events', function () {
+    test('dispatches ApiVersionResolved on every successful resolution', function () {
+        Event::fake();
+
+        $request = Request::create('/api/users');
+        $route = Mockery::mock(Route::class);
+        $request->setRouteResolver(fn () => $route);
+
+        $versionInfo = new VersionInfo(version: '2.0', isDeprecated: false);
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('2.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['2.0']);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn([]);
+
+        $this->middleware->handle($request, fn () => new Response);
+
+        Event::assertDispatched(ApiVersionResolved::class, function (ApiVersionResolved $event) use ($request, $versionInfo) {
+            return $event->request === $request && $event->versionInfo === $versionInfo;
+        });
+        Event::assertNotDispatched(DeprecatedApiVersionUsed::class);
+    });
+
+    test('also dispatches DeprecatedApiVersionUsed when the resolved version is deprecated', function () {
+        Event::fake();
+
+        $request = Request::create('/api/users');
+        $route = Mockery::mock(Route::class);
+        $request->setRouteResolver(fn () => $route);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: true, deprecationMessage: 'Use v2.0');
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('1.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['1.0']);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn(['1.0']);
+
+        $this->middleware->handle($request, fn () => new Response);
+
+        Event::assertDispatched(ApiVersionResolved::class);
+        Event::assertDispatched(DeprecatedApiVersionUsed::class, function (DeprecatedApiVersionUsed $event) use ($versionInfo) {
+            return $event->versionInfo === $versionInfo;
+        });
+    });
+
+    test('dispatches nothing when the version cannot be resolved', function () {
+        Event::fake();
+
+        $request = Request::create('/api/users');
+        $route = Mockery::mock(Route::class);
+        $request->setRouteResolver(fn () => $route);
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('3.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn(null);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['1.0', '2.0']);
+
+        $this->middleware->handle($request, fn () => new Response);
+
+        Event::assertNotDispatched(ApiVersionResolved::class);
+        Event::assertNotDispatched(DeprecatedApiVersionUsed::class);
     });
 });

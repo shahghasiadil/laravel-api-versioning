@@ -3,9 +3,12 @@
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\AdvertiseApiVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
+use ShahGhasiAdil\LaravelApiVersioning\Events\ApiVersionResolved;
+use ShahGhasiAdil\LaravelApiVersioning\Events\DeprecatedApiVersionUsed;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\V1UserController;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\V2UserController;
@@ -205,6 +208,24 @@ test('the Request macros expose version info resolved by the middleware', functi
         'deprecated' => false,
         'info_version' => '2.0',
     ]);
+});
+
+test('ApiVersionResolved and DeprecatedApiVersionUsed fire on a real request', function () {
+    Event::fake();
+
+    getWithVersion('/api/v1/users', '1.0')->assertStatus(200);
+
+    Event::assertDispatched(ApiVersionResolved::class, fn (ApiVersionResolved $e) => $e->versionInfo->version === '1.0');
+    Event::assertDispatched(DeprecatedApiVersionUsed::class, fn (DeprecatedApiVersionUsed $e) => $e->versionInfo->version === '1.0');
+});
+
+test('DeprecatedApiVersionUsed does not fire for a non-deprecated version', function () {
+    Event::fake();
+
+    getWithVersion('/api/v2/users', '2.0')->assertStatus(200);
+
+    Event::assertDispatched(ApiVersionResolved::class);
+    Event::assertNotDispatched(DeprecatedApiVersionUsed::class);
 });
 
 test('closure_routes=reject restores the original 400 behavior', function () {

@@ -7,6 +7,8 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use ShahGhasiAdil\LaravelApiVersioning\Events\ApiVersionResolved;
+use ShahGhasiAdil\LaravelApiVersioning\Events\DeprecatedApiVersionUsed;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Responses\ProblemDetailsResponse;
@@ -54,6 +56,12 @@ class AttributeApiVersionMiddleware
             // Store version info in request
             $request->attributes->set('api_version_info', $versionInfo);
             $request->attributes->set('api_version', $requestedVersion);
+
+            ApiVersionResolved::dispatch($request, $versionInfo);
+
+            if ($versionInfo->isDeprecated) {
+                DeprecatedApiVersionUsed::dispatch($request, $versionInfo);
+            }
 
             // Process request
             $response = $next($request);

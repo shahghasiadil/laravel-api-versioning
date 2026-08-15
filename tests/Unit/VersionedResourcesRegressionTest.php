@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\ResourceCollection;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedJsonResource;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Resources\VersionedResourceCollection;
 

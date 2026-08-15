@@ -18,7 +18,7 @@ interface ApiVersionReader
 {
     /**
      * @return string[] Every version value this reader found, in the order
-     *                   it found them. Empty when nothing was found.
+     *                  it found them. Empty when nothing was found.
      */
     public function read(Request $request): array;
 }

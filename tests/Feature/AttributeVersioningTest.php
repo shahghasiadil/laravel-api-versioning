@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Testing\TestResponse;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\AdvertiseApiVersions;
@@ -39,6 +40,15 @@ beforeEach(function () {
 
         // Advertises a version it doesn't implement
         $this->app['router']->get('orders', [OrdersFeatureTestController::class, 'index']);
+
+        // Reads version info via the Request macros rather than the trait
+        $this->app['router']->get('macro-check', function (Request $request) {
+            return response()->json([
+                'version' => $request->apiVersion(),
+                'deprecated' => $request->isApiVersionDeprecated(),
+                'info_version' => $request->apiVersionInfo()?->version,
+            ]);
+        });
     });
 });
 
@@ -185,6 +195,16 @@ test('closure routes are version-neutral by default', function () {
 
     $response = getWithVersion('/api/ping', '2.0');
     $response->assertStatus(200)->assertJson(['pong' => true]);
+});
+
+test('the Request macros expose version info resolved by the middleware', function () {
+    $response = getWithVersion('/api/macro-check', '2.0');
+
+    $response->assertStatus(200)->assertJson([
+        'version' => '2.0',
+        'deprecated' => false,
+        'info_version' => '2.0',
+    ]);
 });
 
 test('closure_routes=reject restores the original 400 behavior', function () {

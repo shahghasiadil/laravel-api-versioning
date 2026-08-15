@@ -346,6 +346,22 @@ class UserCollection extends VersionedResourceCollection
 }
 ```
 
+## Accessing Version Info
+
+`HasApiVersionAttributes` (see below) covers controllers and resources.
+Anywhere else a `Request` instance is available — form requests, jobs,
+custom middleware, API resources not extending `VersionedJsonResource` —
+use the `Request` macros the middleware registers:
+
+```php
+$request->apiVersion();              // ?string, e.g. '2.0'
+$request->apiVersionInfo();          // ?VersionInfo
+$request->isApiVersionDeprecated();  // bool
+```
+
+These return `null`/`false` until the `api.version` middleware has run for
+the current request.
+
 ## Version Comparison Helpers
 
 In controllers/resources using `HasApiVersionAttributes`:

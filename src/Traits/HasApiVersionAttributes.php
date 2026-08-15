@@ -11,16 +11,12 @@ trait HasApiVersionAttributes
 {
     protected function getVersionInfo(): ?VersionInfo
     {
-        $versionInfo = request()->attributes->get('api_version_info');
-
-        return $versionInfo instanceof VersionInfo ? $versionInfo : null;
+        return request()->apiVersionInfo();
     }
 
     protected function getCurrentApiVersion(): ?string
     {
-        $version = request()->attributes->get('api_version');
-
-        return is_string($version) ? $version : null;
+        return request()->apiVersion();
     }
 
     protected function isVersionDeprecated(): bool

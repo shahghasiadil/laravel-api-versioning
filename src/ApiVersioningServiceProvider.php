@@ -13,6 +13,7 @@ use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionConfigCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionHealthCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionsCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\MakeVersionedControllerCommand;
+use ShahGhasiAdil\LaravelApiVersioning\Http\RequestMacros;
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
@@ -80,6 +81,8 @@ class ApiVersioningServiceProvider extends ServiceProvider
         /** @var Router $router */
         $router = $this->app->make('router');
         $router->aliasMiddleware('api.version', AttributeApiVersionMiddleware::class);
+
+        RequestMacros::register();
 
         if ($this->app->runningInConsole()) {
             $this->commands([

@@ -68,29 +68,47 @@ class AttributeApiVersionMiddleware
     private function addVersionHeaders(Response $response, VersionInfo $versionInfo, Route $route): void
     {
         $response->headers->set('X-API-Version', $versionInfo->version);
-        $response->headers->set('X-API-Supported-Versions',
-            implode(', ', $this->versionManager->getSupportedVersions()));
-
-        if ($versionInfo->isDeprecated) {
-            $response->headers->set('X-API-Deprecated', 'true');
-
-            if ($versionInfo->deprecationMessage !== null) {
-                $response->headers->set('X-API-Deprecation-Message', $versionInfo->deprecationMessage);
-            }
-
-            if ($versionInfo->sunsetDate !== null) {
-                $response->headers->set('X-API-Sunset', $versionInfo->sunsetDate);
-            }
-
-            if ($versionInfo->replacedBy !== null) {
-                $response->headers->set('X-API-Replaced-By', $versionInfo->replacedBy);
-            }
-        }
 
         // Route versions are embedded in VersionInfo to avoid a second resolver call
         $routeVersions = $versionInfo->routeVersions ?? $this->attributeResolver->getAllVersionsForRoute($route);
-        if ($routeVersions !== []) {
-            $response->headers->set('X-API-Route-Versions', implode(', ', $routeVersions));
+
+        /** @var array<string, mixed> $reportingConfig */
+        $reportingConfig = config('api-versioning.reporting', []);
+        $standardHeaders = (bool) ($reportingConfig['standard_headers'] ?? true);
+        $legacyHeaders = (bool) ($reportingConfig['legacy_headers'] ?? true);
+
+        if ($standardHeaders && $routeVersions !== []) {
+            $response->headers->set('api-supported-versions', implode(', ', $routeVersions));
+
+            $deprecatedVersions = $this->attributeResolver->getDeprecatedVersionsForRoute($route);
+            if ($deprecatedVersions !== []) {
+                $response->headers->set('api-deprecated-versions', implode(', ', $deprecatedVersions));
+            }
+        }
+
+        if ($legacyHeaders) {
+            $response->headers->set('X-API-Supported-Versions',
+                implode(', ', $this->versionManager->getSupportedVersions()));
+
+            if ($versionInfo->isDeprecated) {
+                $response->headers->set('X-API-Deprecated', 'true');
+
+                if ($versionInfo->deprecationMessage !== null) {
+                    $response->headers->set('X-API-Deprecation-Message', $versionInfo->deprecationMessage);
+                }
+
+                if ($versionInfo->sunsetDate !== null) {
+                    $response->headers->set('X-API-Sunset', $versionInfo->sunsetDate);
+                }
+
+                if ($versionInfo->replacedBy !== null) {
+                    $response->headers->set('X-API-Replaced-By', $versionInfo->replacedBy);
+                }
+            }
+
+            if ($routeVersions !== []) {
+                $response->headers->set('X-API-Route-Versions', implode(', ', $routeVersions));
+            }
         }
     }
 

@@ -194,7 +194,19 @@ Add deprecation metadata to controller/method.
 
 ## Response Headers
 
-When middleware is active, responses can include:
+When middleware is active, responses can include two sets of headers,
+controlled independently via `config('api-versioning.reporting')`:
+
+**Standard headers** (`reporting.standard_headers`, default `true`) — scoped
+to the current endpoint, matching common REST API versioning conventions:
+
+```http
+api-supported-versions: 2.0, 2.1
+api-deprecated-versions: 2.0
+```
+
+**Legacy headers** (`reporting.legacy_headers`, default `true`) — this
+package's original headers, kept for backward compatibility:
 
 ```http
 X-API-Version: 2.0
@@ -205,6 +217,11 @@ X-API-Deprecation-Message: Use store() instead
 X-API-Sunset: 2026-12-31
 X-API-Replaced-By: 2.1
 ```
+
+Note the difference in scope: `api-supported-versions`/`X-API-Route-Versions`
+report what *this endpoint* supports, while `X-API-Supported-Versions`
+reports your application's entire `supported_versions` config list.
+`X-API-Version` is always emitted regardless of these settings.
 
 ## Versioned Resources
 

@@ -102,6 +102,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Version Reporting Headers
+    |--------------------------------------------------------------------------
+    |
+    | Controls which response headers advertise version support.
+    |
+    | 'standard_headers' emits the endpoint-scoped `api-supported-versions`
+    | and `api-deprecated-versions` headers, matching common REST API
+    | versioning conventions (e.g. ASP.NET's API Versioning library). These
+    | report the versions *this specific endpoint* serves, not your whole
+    | application's supported_versions list.
+    |
+    | 'legacy_headers' keeps emitting this package's original `X-API-*`
+    | headers (X-API-Supported-Versions, X-API-Route-Versions, X-API-
+    | Deprecated, etc.) for backward compatibility. Disable it once your
+    | clients have migrated to the standard headers above.
+    |
+    */
+    'reporting' => [
+        'standard_headers' => true,
+        'legacy_headers' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Documentation
     |--------------------------------------------------------------------------
     |

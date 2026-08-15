@@ -145,6 +145,57 @@ class AttributeVersionResolver
     }
 
     /**
+     * The subset of a route's declared versions that are deprecated, whether
+     * via per-version #[ApiVersion]/#[MapToApiVersion] attributes or a
+     * coarse #[Deprecated] attribute (which deprecates every version the
+     * route declares).
+     *
+     * @return string[]
+     */
+    public function getDeprecatedVersionsForRoute(Route $route): array
+    {
+        $controller = $route->getController();
+        $action = $route->getActionMethod();
+
+        if ($controller === null) {
+            return [];
+        }
+
+        $controllerClass = get_class($controller);
+        $cacheKey = $this->cache->generateRouteDeprecatedVersionsKey($controllerClass, $action);
+
+        /** @var string[] $result */
+        $result = $this->cache->remember($cacheKey, function () use ($controller, $action) {
+            $reflectionClass = new ReflectionClass($controller);
+            $reflectionMethod = $reflectionClass->getMethod($action);
+
+            if ($reflectionMethod->getAttributes(ApiVersionNeutral::class) !== [] ||
+                $reflectionClass->getAttributes(ApiVersionNeutral::class) !== []) {
+                return [];
+            }
+
+            $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
+            $methodMetadata = $this->collectVersionMetadata($methodVersionAttrs);
+
+            $metadata = $methodMetadata->versions !== []
+                ? $methodMetadata
+                : $this->collectVersionMetadata($reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF));
+
+            if ($metadata->deprecated !== []) {
+                return array_keys($metadata->deprecated);
+            }
+
+            // No per-version deprecation declared: fall back to the coarse
+            // #[Deprecated] attribute, which deprecates every version.
+            $coarseDeprecated = $this->getDeprecationInfo($reflectionMethod) ?? $this->getDeprecationInfo($reflectionClass);
+
+            return $coarseDeprecated !== null ? $metadata->versions : [];
+        });
+
+        return $result;
+    }
+
+    /**
      * Reset the in-process memory cache (useful in tests).
      */
     public static function resetMemoryCache(): void

@@ -98,6 +98,14 @@ class AttributeCacheService
     }
 
     /**
+     * Generate cache key for the deprecated versions of a route.
+     */
+    public function generateRouteDeprecatedVersionsKey(string $controller, string $method): string
+    {
+        return sprintf('route_deprecated_versions:%s@%s', $controller, $method);
+    }
+
+    /**
      * Determine whether the active cache store supports tagging.
      */
     private function supportsTags(): bool

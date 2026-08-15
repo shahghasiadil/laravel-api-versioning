@@ -68,6 +68,25 @@ class PerVersionDeprecatedMethodController extends Controller
     }
 }
 
+#[ApiVersion(['1.0', '2.0'])]
+#[Deprecated(message: 'Whole endpoint is deprecated')]
+class CoarseDeprecatedController extends Controller
+{
+    public function index(): JsonResponse
+    {
+        return response()->json([]);
+    }
+}
+
+#[ApiVersion(['1.0', '2.0'])]
+class NotDeprecatedController extends Controller
+{
+    public function index(): JsonResponse
+    {
+        return response()->json([]);
+    }
+}
+
 describe('per-version deprecation via #[ApiVersion]', function () {
     test('marks only the version declared deprecated on its own attribute', function () {
         $route = mockRouteFor(new PerVersionDeprecatedController, 'index');
@@ -110,5 +129,25 @@ describe('per-version deprecation via #[MapToApiVersion]', function () {
         expect($v1->replacedBy)->toBe('2.0');
 
         expect($v2->isDeprecated)->toBeFalse();
+    });
+});
+
+describe('getDeprecatedVersionsForRoute', function () {
+    test('returns only the versions individually marked deprecated', function () {
+        $route = mockRouteFor(new PerVersionDeprecatedController, 'index');
+
+        expect($this->resolver->getDeprecatedVersionsForRoute($route))->toBe(['1.0']);
+    });
+
+    test('returns every declared version when a coarse #[Deprecated] attribute is used', function () {
+        $route = mockRouteFor(new CoarseDeprecatedController, 'index');
+
+        expect($this->resolver->getDeprecatedVersionsForRoute($route))->toBe(['1.0', '2.0']);
+    });
+
+    test('returns an empty array when nothing is deprecated', function () {
+        $route = mockRouteFor(new NotDeprecatedController, 'index');
+
+        expect($this->resolver->getDeprecatedVersionsForRoute($route))->toBe([]);
     });
 });

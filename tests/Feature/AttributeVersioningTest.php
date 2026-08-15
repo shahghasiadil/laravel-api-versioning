@@ -71,6 +71,42 @@ test('version detection from query', function () {
     assertApiVersion($response, '2.0');
 });
 
+test('standard reporting headers are scoped to the endpoint', function () {
+    $response = getWithVersion('/api/v1/users', '1.0');
+
+    $response->assertStatus(200)
+        ->assertHeader('api-supported-versions', '1.0, 1.1')
+        ->assertHeader('api-deprecated-versions', '1.0, 1.1');
+
+    $response = getWithVersion('/api/v2/users', '2.0');
+
+    $response->assertStatus(200)
+        ->assertHeader('api-supported-versions', '2.0, 2.1')
+        ->assertHeaderMissing('api-deprecated-versions');
+});
+
+test('legacy_headers=false omits the X-API-* headers', function () {
+    config(['api-versioning.reporting.legacy_headers' => false]);
+
+    $response = getWithVersion('/api/v2/users', '2.0');
+
+    $response->assertStatus(200)
+        ->assertHeaderMissing('X-API-Supported-Versions')
+        ->assertHeaderMissing('X-API-Route-Versions')
+        ->assertHeader('api-supported-versions', '2.0, 2.1');
+});
+
+test('standard_headers=false omits the standard headers', function () {
+    config(['api-versioning.reporting.standard_headers' => false]);
+
+    $response = getWithVersion('/api/v2/users', '2.0');
+
+    $response->assertStatus(200)
+        ->assertHeaderMissing('api-supported-versions')
+        ->assertHeaderMissing('api-deprecated-versions')
+        ->assertHeader('X-API-Route-Versions', '2.0, 2.1');
+});
+
 /**
  * Call the given URI with API version header
  */

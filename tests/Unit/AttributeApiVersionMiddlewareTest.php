@@ -54,6 +54,11 @@ describe('successful request handling', function () {
             ->once()
             ->andReturn(['2.0', '2.1']);
 
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')
+            ->with($route)
+            ->once()
+            ->andReturn([]);
+
         $response = new Response('{"data": "test"}', 200, ['Content-Type' => 'application/json']);
 
         $result = $this->middleware->handle($request, fn () => $response);
@@ -64,6 +69,8 @@ describe('successful request handling', function () {
         expect($result->headers->get('X-API-Version'))->toBe('2.0');
         expect($result->headers->get('X-API-Supported-Versions'))->toBe('1.0, 2.0, 2.1');
         expect($result->headers->get('X-API-Route-Versions'))->toBe('2.0, 2.1');
+        expect($result->headers->get('api-supported-versions'))->toBe('2.0, 2.1');
+        expect($result->headers->has('api-deprecated-versions'))->toBeFalse();
     });
 
     test('adds deprecation headers for deprecated version', function () {
@@ -99,6 +106,11 @@ describe('successful request handling', function () {
             ->once()
             ->andReturn(['1.0']);
 
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')
+            ->with($route)
+            ->once()
+            ->andReturn(['1.0']);
+
         $response = new Response('{"data": "test"}');
 
         $result = $this->middleware->handle($request, fn () => $response);
@@ -108,6 +120,8 @@ describe('successful request handling', function () {
         expect($result->headers->get('X-API-Deprecation-Message'))->toBe('Use v2.0 instead');
         expect($result->headers->get('X-API-Sunset'))->toBe('2025-12-31');
         expect($result->headers->get('X-API-Replaced-By'))->toBe('2.0');
+        expect($result->headers->get('api-supported-versions'))->toBe('1.0');
+        expect($result->headers->get('api-deprecated-versions'))->toBe('1.0');
     });
 
     test('handles partial deprecation information', function () {
@@ -134,6 +148,9 @@ describe('successful request handling', function () {
             ->andReturn($versionInfo);
 
         $this->attributeResolver->shouldReceive('getAllVersionsForRoute')
+            ->andReturn(['1.0']);
+
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')
             ->andReturn(['1.0']);
 
         $response = new Response;
@@ -294,5 +311,47 @@ describe('header management', function () {
         $result = $this->middleware->handle($request, fn () => $response);
 
         expect($result->headers->has('X-API-Route-Versions'))->toBeFalse();
+        expect($result->headers->has('api-supported-versions'))->toBeFalse();
+    });
+});
+
+describe('standard vs legacy reporting header config', function () {
+    beforeEach(function () {
+        $this->request = Request::create('/api/users');
+        $this->route = Mockery::mock(Route::class);
+        $this->request->setRouteResolver(fn () => $this->route);
+
+        $this->versionInfo = new VersionInfo(
+            version: '2.0',
+            isDeprecated: false,
+            isNeutral: false
+        );
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('2.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($this->versionInfo);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['2.0']);
+    });
+
+    test('legacy_headers=false omits the X-API-* headers but keeps the standard ones', function () {
+        config(['api-versioning.reporting.legacy_headers' => false]);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn([]);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('X-API-Supported-Versions'))->toBeFalse();
+        expect($result->headers->has('X-API-Route-Versions'))->toBeFalse();
+        expect($result->headers->get('api-supported-versions'))->toBe('2.0');
+    });
+
+    test('standard_headers=false omits the standard headers but keeps the legacy ones', function () {
+        config(['api-versioning.reporting.standard_headers' => false]);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('api-supported-versions'))->toBeFalse();
+        expect($result->headers->has('api-deprecated-versions'))->toBeFalse();
+        expect($result->headers->get('X-API-Supported-Versions'))->toBe('1.0, 2.0');
+        expect($result->headers->get('X-API-Route-Versions'))->toBe('2.0');
     });
 });

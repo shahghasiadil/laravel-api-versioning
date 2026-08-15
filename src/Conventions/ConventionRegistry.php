@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Conventions;
 
+use ShahGhasiAdil\LaravelApiVersioning\ApiVersioning;
+use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
+
 /**
- * Storage for conventions registered via {@see \ShahGhasiAdil\LaravelApiVersioning\ApiVersioning::conventions()}.
+ * Storage for conventions registered via {@see ApiVersioning::conventions()}.
  *
  * A single mutable, container-bound singleton: {@see ConventionBuilder} and
  * its child builders ({@see ControllerConvention}, {@see ActionConvention},
- * {@see RouteConvention}) write into it; {@see \ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver}
+ * {@see RouteConvention}) write into it; {@see AttributeVersionResolver}
  * reads from it as a fallback for classes/methods/routes that carry no
  * version attributes of their own -- attributes always win when present.
  */

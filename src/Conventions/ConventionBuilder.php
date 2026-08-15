@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Conventions;
 
+use ShahGhasiAdil\LaravelApiVersioning\ApiVersioning;
+
 /**
  * Entry point passed to the callback given to
- * {@see \ShahGhasiAdil\LaravelApiVersioning\ApiVersioning::conventions()}.
+ * {@see ApiVersioning::conventions()}.
  */
 final class ConventionBuilder
 {

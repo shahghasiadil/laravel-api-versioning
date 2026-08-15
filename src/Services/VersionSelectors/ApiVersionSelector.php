@@ -13,9 +13,9 @@ interface ApiVersionSelector
 {
     /**
      * @param  string[]  $implementedVersions  The versions the matched route
-     *         implements (per AttributeVersionResolver::getAllVersionsForRoute()),
-     *         or an empty array when there is no matched route / it couldn't
-     *         be determined.
+     *                                         implements (per AttributeVersionResolver::getAllVersionsForRoute()),
+     *                                         or an empty array when there is no matched route / it couldn't
+     *                                         be determined.
      * @param  string  $defaultVersion  The configured 'default_version'.
      */
     public function select(array $implementedVersions, string $defaultVersion): string;

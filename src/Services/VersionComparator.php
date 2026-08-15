@@ -4,10 +4,20 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
+use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\ApiVersion;
+
 class VersionComparator
 {
     /**
      * Compare two version strings
+     *
+     * Delegates to {@see ApiVersion} when both strings parse as a valid
+     * API version (group date and/or major.minor-status), which is what
+     * makes `'2' == '2.0'` and correctly-ordered prerelease statuses
+     * (`1.0-beta < 1.0`) work. Falls back to PHP's `version_compare()`
+     * for anything ApiVersion can't parse (e.g. three-part semver like
+     * `2.1.5`), preserving this method's original behavior for those
+     * inputs.
      *
      * @return int Returns < 0 if $version1 is less than $version2;
      *             > 0 if $version1 is greater than $version2;
@@ -15,6 +25,13 @@ class VersionComparator
      */
     public function compare(string $version1, string $version2): int
     {
+        $a = ApiVersion::tryParse($version1);
+        $b = ApiVersion::tryParse($version2);
+
+        if ($a !== null && $b !== null) {
+            return $a->compareTo($b);
+        }
+
         return version_compare($version1, $version2);
     }
 

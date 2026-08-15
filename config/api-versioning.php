@@ -45,6 +45,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Version Readers (alternative to 'detection_methods' above)
+    |--------------------------------------------------------------------------
+    |
+    | Every entry under 'detection_methods' above is implemented as a
+    | ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\ApiVersionReader
+    | strategy object under the hood. If you need a reader 'detection_methods'
+    | can't express -- a different header set, a custom source (a subdomain,
+    | a JWT claim), or just explicit control over reader order -- list reader
+    | classes here instead. When non-empty, this list is used in place of
+    | 'detection_methods' entirely; each value is passed to the reader's
+    | constructor as named arguments.
+    |
+    | 'readers' => [
+    |     \ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\HeaderApiVersionReader::class => [
+    |         'headerName' => 'X-API-Version',
+    |     ],
+    |     \ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\QueryStringApiVersionReader::class => [
+    |         'parameterName' => 'api-version',
+    |     ],
+    |     \ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\UrlSegmentApiVersionReader::class => [
+    |         'prefix' => 'api/v',
+    |     ],
+    |     // A custom reader, e.g. reading the version from a JWT claim:
+    |     // \App\Versioning\JwtClaimApiVersionReader::class => ['claim' => 'api_version'],
+    | ],
+    |
+    */
+    'readers' => [],
+
+    /*
+    |--------------------------------------------------------------------------
     | Version Detection Strictness
     |--------------------------------------------------------------------------
     |

@@ -7,6 +7,12 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 use Illuminate\Http\Request;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\ApiVersionReader;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\CombinedApiVersionReader;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\HeaderApiVersionReader;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\MediaTypeApiVersionReader;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\QueryStringApiVersionReader;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\UrlSegmentApiVersionReader;
 
 class VersionManager
 {
@@ -61,15 +67,62 @@ class VersionManager
 
     /**
      * Collect the version value produced by each enabled detection method,
-     * in 'detection_methods' config order. Only non-empty values are included.
+     * in config order. Only non-empty values are included.
+     *
+     * Delegates the actual extraction to {@see ApiVersionReader} strategy
+     * objects via {@see CombinedApiVersionReader}, built either from the
+     * 'readers' config (a list of reader class => constructor-options) or,
+     * when that's absent, as a shim over the legacy 'detection_methods'
+     * config -- so both forms keep working.
      *
      * @return array<string, string>
      */
     private function collectDetectedVersions(Request $request): array
     {
+        return (new CombinedApiVersionReader($this->buildReaders()))->readByReader($request);
+    }
+
+    /**
+     * @return array<string, ApiVersionReader>
+     */
+    private function buildReaders(): array
+    {
+        /** @var mixed $readersConfig */
+        $readersConfig = $this->config['readers'] ?? null;
+
+        if (is_array($readersConfig) && $readersConfig !== []) {
+            $readers = [];
+
+            foreach ($readersConfig as $readerClass => $options) {
+                if (! is_string($readerClass) || ! is_subclass_of($readerClass, ApiVersionReader::class)) {
+                    continue;
+                }
+
+                /** @var array<string, mixed> $options */
+                $options = is_array($options) ? $options : [];
+                $name = class_basename($readerClass);
+                /** @var ApiVersionReader $reader */
+                $reader = new $readerClass(...$options);
+                $readers[$name] = $reader;
+            }
+
+            return $readers;
+        }
+
+        return $this->buildReadersFromDetectionMethods();
+    }
+
+    /**
+     * Shim: build the same reader set the legacy 'detection_methods' config
+     * described, so existing config files keep working unmodified.
+     *
+     * @return array<string, ApiVersionReader>
+     */
+    private function buildReadersFromDetectionMethods(): array
+    {
         /** @var array<string, array<string, mixed>> $detectionMethods */
         $detectionMethods = $this->config['detection_methods'];
-        $detected = [];
+        $readers = [];
 
         foreach ($detectionMethods as $method => $config) {
             $enabled = $config['enabled'] ?? false;
@@ -77,25 +130,53 @@ class VersionManager
                 continue;
             }
 
-            /** @var mixed $headerName */
-            $headerName = $config['header_name'] ?? 'X-API-Version';
-            /** @var mixed $parameterName */
-            $parameterName = $config['parameter_name'] ?? 'api-version';
-
-            $value = match ($method) {
-                'header' => $request->header(is_string($headerName) ? $headerName : 'X-API-Version'),
-                'query' => $request->query(is_string($parameterName) ? $parameterName : 'api-version'),
-                'path' => $this->extractVersionFromPath($request, $config),
-                'media_type' => $this->extractVersionFromMediaType($request, $config),
-                default => null
+            $reader = match ($method) {
+                'header' => new HeaderApiVersionReader($this->stringOption($config, 'header_name', 'X-API-Version')),
+                'query' => new QueryStringApiVersionReader($this->stringOption($config, 'parameter_name', 'api-version')),
+                'path' => new UrlSegmentApiVersionReader($this->stringOption($config, 'prefix', 'api/v')),
+                'media_type' => new MediaTypeApiVersionReader($this->mediaTypeParameterName($config)),
+                default => null,
             };
 
-            if (is_string($value) && $value !== '') {
-                $detected[$method] = $value;
+            if ($reader !== null) {
+                $readers[$method] = $reader;
             }
         }
 
-        return $detected;
+        return $readers;
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    private function stringOption(array $config, string $key, string $default): string
+    {
+        /** @var mixed $value */
+        $value = $config[$key] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : $default;
+    }
+
+    /**
+     * The media-type parameter name to look for, either explicit
+     * ('parameter') or derived from the legacy 'format' sprintf pattern
+     * (e.g. 'version=%s' => 'version').
+     *
+     * @param  array<string, mixed>  $config
+     */
+    private function mediaTypeParameterName(array $config): string
+    {
+        /** @var mixed $parameterRaw */
+        $parameterRaw = $config['parameter'] ?? null;
+        if (is_string($parameterRaw) && $parameterRaw !== '') {
+            return $parameterRaw;
+        }
+
+        /** @var mixed $formatRaw */
+        $formatRaw = $config['format'] ?? 'application/vnd.api+json;version=%s';
+        $format = is_string($formatRaw) ? $formatRaw : 'application/vnd.api+json;version=%s';
+
+        return preg_match('/([a-zA-Z0-9_-]+)=%s/', $format, $matches) === 1 ? $matches[1] : 'version';
     }
 
     /**
@@ -138,118 +219,6 @@ class VersionManager
         $first = reset($detected);
 
         return $first;
-    }
-
-    /**
-     * @param  array<string, mixed>  $config
-     */
-    private function extractVersionFromPath(Request $request, array $config): ?string
-    {
-        $path = $request->path();
-        /** @var string $prefix */
-        $prefix = $config['prefix'] ?? 'api/v';
-
-        // Handle various path patterns:
-        // - api/v1.0/users
-        // - api/v2.1.0/users
-        // - api/v2/users
-        // - v1.0/users (without api prefix)
-        $pattern = '#^'.preg_quote($prefix, '#').'(\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)(?:/|$)#';
-
-        if (preg_match($pattern, $path, $matches) === 1) {
-            return $matches[1];
-        }
-
-        return null;
-    }
-
-    /**
-     * Extract a version from the media-type parameter (e.g.
-     * `application/vnd.api+json;version=2.0`) on the `Accept` header, and,
-     * if not found there, the `Content-Type` header — relevant on
-     * POST/PUT/PATCH requests, which don't send `Accept` with a version.
-     *
-     * Each header is parsed as a genuine list of media-type entries: split
-     * on `,` for the entries, then on `;` for each entry's parameters,
-     * with quoted parameter values (`version="2.0"`) unquoted and q-values
-     * honored — entries are checked in descending q-value order, so
-     * `application/json;version=1.0;q=0.9, application/json;version=2.0`
-     * (implicit q=1.0) resolves to `2.0`.
-     *
-     * @param  array<string, mixed>  $config
-     */
-    private function extractVersionFromMediaType(Request $request, array $config): ?string
-    {
-        /** @var mixed $parameterRaw */
-        $parameterRaw = $config['parameter'] ?? null;
-        $parameter = is_string($parameterRaw) && $parameterRaw !== '' ? $parameterRaw : null;
-
-        if ($parameter === null) {
-            /** @var mixed $formatRaw */
-            $formatRaw = $config['format'] ?? 'application/vnd.api+json;version=%s';
-            $format = is_string($formatRaw) ? $formatRaw : 'application/vnd.api+json;version=%s';
-            $parameter = preg_match('/([a-zA-Z0-9_-]+)=%s/', $format, $matches) === 1 ? $matches[1] : 'version';
-        }
-
-        foreach (['Accept', 'Content-Type'] as $headerName) {
-            $header = $request->header($headerName);
-            if (is_string($header) && $header !== '') {
-                $version = $this->readVersionFromMediaTypeHeader($header, $parameter);
-                if ($version !== null) {
-                    return $version;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Parse a raw `Accept`/`Content-Type` header value into its media-type
-     * entries and return the first named parameter's value, preferring
-     * higher q-values and otherwise the order the entries appear in.
-     */
-    private function readVersionFromMediaTypeHeader(string $header, string $parameter): ?string
-    {
-        $entries = [];
-
-        foreach (explode(',', $header) as $index => $rawEntry) {
-            $segments = array_map('trim', explode(';', $rawEntry));
-            array_shift($segments); // drop the media type itself (e.g. application/json)
-
-            $q = 1.0;
-            $params = [];
-
-            foreach ($segments as $segment) {
-                if ($segment === '' || ! str_contains($segment, '=')) {
-                    continue;
-                }
-
-                [$key, $value] = array_map('trim', explode('=', $segment, 2));
-                $value = trim($value, "\"'");
-                $key = strtolower($key);
-
-                if ($key === 'q') {
-                    $q = is_numeric($value) ? (float) $value : 1.0;
-                } else {
-                    $params[$key] = $value;
-                }
-            }
-
-            $entries[] = ['q' => $q, 'params' => $params, 'order' => $index];
-        }
-
-        usort($entries, fn (array $a, array $b): int => $b['q'] <=> $a['q'] ?: $a['order'] <=> $b['order']);
-
-        foreach ($entries as $entry) {
-            /** @var array<string, string> $params */
-            $params = $entry['params'];
-            if (isset($params[$parameter]) && $params[$parameter] !== '') {
-                return $params[$parameter];
-            }
-        }
-
-        return null;
     }
 
     /**

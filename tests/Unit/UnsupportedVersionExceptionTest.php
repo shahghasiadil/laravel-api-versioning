@@ -3,6 +3,7 @@
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
+use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 
 beforeEach(function () {
     // Clear any existing configuration to ensure clean state
@@ -136,6 +137,59 @@ describe('json response rendering', function () {
 
         $data = $response->getData(true);
         expect($data)->not()->toHaveKey('documentation');
+    });
+});
+
+describe('reason-based rendering', function () {
+    test('defaults to the Unsupported reason', function () {
+        $exception = new UnsupportedVersionException('Error');
+
+        expect($exception->reason)->toBe(VersionProblemReason::Unsupported);
+        expect($exception->context)->toBe([]);
+    });
+
+    test('renders the Unspecified reason with its own title and code', function () {
+        $exception = new UnsupportedVersionException(
+            message: 'No version given',
+            supportedVersions: ['1.0', '2.0'],
+            reason: VersionProblemReason::Unspecified
+        );
+
+        $data = $exception->render(Request::create('/api/users'))->getData(true);
+
+        expect($data['title'])->toBe('Unspecified API Version');
+        expect($data['code'])->toBe('ApiVersionUnspecified');
+        expect($data)->not()->toHaveKey('requested_version');
+    });
+
+    test('renders the Invalid reason with the malformed value', function () {
+        $exception = new UnsupportedVersionException(
+            message: 'Bad format',
+            supportedVersions: ['1.0', '2.0'],
+            requestedVersion: 'garbage!!',
+            reason: VersionProblemReason::Invalid
+        );
+
+        $data = $exception->render(Request::create('/api/users'))->getData(true);
+
+        expect($data['title'])->toBe('Invalid API Version');
+        expect($data['code'])->toBe('InvalidApiVersion');
+        expect($data['requested_version'])->toBe('garbage!!');
+    });
+
+    test('renders the Ambiguous reason with the conflicting values', function () {
+        $exception = new UnsupportedVersionException(
+            message: 'Conflict',
+            supportedVersions: ['1.0', '2.0'],
+            reason: VersionProblemReason::Ambiguous,
+            context: ['conflicts' => ['header' => '1.0', 'query' => '2.0']]
+        );
+
+        $data = $exception->render(Request::create('/api/users'))->getData(true);
+
+        expect($data['title'])->toBe('Ambiguous API Version');
+        expect($data['code'])->toBe('AmbiguousApiVersion');
+        expect($data['conflicts'])->toBe(['header' => '1.0', 'query' => '2.0']);
     });
 });
 

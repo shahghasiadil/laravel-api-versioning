@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
+use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Responses\ProblemDetailsResponse;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
@@ -114,13 +115,26 @@ class AttributeApiVersionMiddleware
 
     private function createErrorResponse(UnsupportedVersionException $e): ProblemDetailsResponse
     {
-        /** @var string|null $documentationUrl */
-        $documentationUrl = config('api-versioning.documentation.base_url');
+        /** @var string|null $configuredDocumentationUrl */
+        $configuredDocumentationUrl = config('api-versioning.documentation.base_url');
+        $documentationUrl = is_string($configuredDocumentationUrl) && $configuredDocumentationUrl !== ''
+            ? $configuredDocumentationUrl
+            : null;
 
-        return ProblemDetailsResponse::unsupportedVersion(
-            requestedVersion: $e->requestedVersion ?? 'unknown',
+        if ($e->reason === VersionProblemReason::Unsupported) {
+            return ProblemDetailsResponse::unsupportedVersion(
+                requestedVersion: $e->requestedVersion ?? 'unknown',
+                supportedVersions: $this->versionManager->getSupportedVersions(),
+                endpointVersions: $e->supportedVersions,
+                documentationUrl: $documentationUrl
+            );
+        }
+
+        return ProblemDetailsResponse::versionProblem(
+            reason: $e->reason,
+            requestedVersion: $e->requestedVersion,
             supportedVersions: $this->versionManager->getSupportedVersions(),
-            endpointVersions: $e->supportedVersions,
+            context: $e->context,
             documentationUrl: $documentationUrl
         );
     }

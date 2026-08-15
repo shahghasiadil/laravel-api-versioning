@@ -314,7 +314,8 @@ $comparator->satisfies('2.1', '^2.0');
 
 ## Error Format (RFC 7807)
 
-Unsupported versions return `application/problem+json`:
+Version problems return `application/problem+json` with a machine-readable
+`code` alongside the human-readable `title`:
 
 ```json
 {
@@ -322,6 +323,7 @@ Unsupported versions return `application/problem+json`:
   "title": "Unsupported API Version",
   "status": 400,
   "detail": "API version '3.0' is not supported for this endpoint.",
+  "code": "UnsupportedApiVersion",
   "requested_version": "3.0",
   "supported_versions": ["1.0", "1.1", "2.0", "2.1"],
   "endpoint_versions": ["2.0", "2.1"]
@@ -329,6 +331,30 @@ Unsupported versions return `application/problem+json`:
 ```
 
 Optional `documentation` is included when `api-versioning.documentation.base_url` is set.
+
+### Detection strictness
+
+By default, version detection is lenient: an unspecified version silently
+falls back to `default_version`, conflicting detection methods silently use
+whichever is listed first in `detection_methods`, and any non-empty string
+is treated as a candidate version. Three independent, opt-in flags under
+`api-versioning.version_detection` tighten this and surface distinct
+problem types instead:
+
+```php
+'version_detection' => [
+    'require_explicit_version' => false,      // true => 400 "Unspecified API Version" instead of assuming default_version
+    'reject_conflicting_versions' => false,   // true => 400 "Ambiguous API Version" instead of first-match-wins
+    'format_validation' => [
+        'enabled' => false,                   // true => 400 "Invalid API Version" for values that don't match 'pattern'
+        'pattern' => '/^\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?$/',
+    ],
+],
+```
+
+Each has its own `code`: `ApiVersionUnspecified`, `AmbiguousApiVersion`
+(with a `conflicts` map of detection method → detected value), and
+`InvalidApiVersion`.
 
 ## Artisan Commands
 

@@ -14,13 +14,16 @@ class UnsupportedVersionException extends Exception
 {
     /**
      * @param  string[]  $supportedVersions
+     * @param  array<string, mixed>  $context  Reason-specific extra data (see {@see ProblemDetailsResponse::versionProblem()}).
      */
     public function __construct(
         string $message = '',
         public readonly array $supportedVersions = [],
         public readonly ?string $requestedVersion = null,
         int $code = 0,
-        ?Throwable $previous = null
+        ?Throwable $previous = null,
+        public readonly VersionProblemReason $reason = VersionProblemReason::Unsupported,
+        public readonly array $context = [],
     ) {
         parent::__construct($message, $code, $previous);
     }
@@ -32,12 +35,26 @@ class UnsupportedVersionException extends Exception
      */
     public function render(Request $request): JsonResponse
     {
-        $documentationUrl = config('api-versioning.documentation.base_url');
+        /** @var string|null $configuredDocumentationUrl */
+        $configuredDocumentationUrl = config('api-versioning.documentation.base_url');
+        $documentationUrl = is_string($configuredDocumentationUrl) && $configuredDocumentationUrl !== ''
+            ? $configuredDocumentationUrl
+            : null;
 
-        return ProblemDetailsResponse::unsupportedVersion(
-            requestedVersion: $this->requestedVersion ?? 'unknown',
+        if ($this->reason === VersionProblemReason::Unsupported) {
+            return ProblemDetailsResponse::unsupportedVersion(
+                requestedVersion: $this->requestedVersion ?? 'unknown',
+                supportedVersions: $this->supportedVersions,
+                documentationUrl: $documentationUrl
+            );
+        }
+
+        return ProblemDetailsResponse::versionProblem(
+            reason: $this->reason,
+            requestedVersion: $this->requestedVersion,
             supportedVersions: $this->supportedVersions,
-            documentationUrl: is_string($documentationUrl) && $documentationUrl !== '' ? $documentationUrl : null
+            context: $this->context,
+            documentationUrl: $documentationUrl
         );
     }
 }

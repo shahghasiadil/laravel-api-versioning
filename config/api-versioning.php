@@ -45,6 +45,40 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Version Detection Strictness
+    |--------------------------------------------------------------------------
+    |
+    | Fine-tune how strictly incoming version values are validated. Each of
+    | these defaults to disabled, preserving this package's original,
+    | lenient behavior; enable them individually to adopt stricter semantics.
+    |
+    | - 'require_explicit_version': when true, a request that specifies no
+    |   version at all returns a 400 "Unspecified API Version" error instead
+    |   of silently assuming 'default_version' above.
+    |
+    | - 'reject_conflicting_versions': when true, a request where multiple
+    |   enabled detection methods disagree (e.g. the header says 1.0 but the
+    |   query string says 2.0) returns a 400 "Ambiguous API Version" error
+    |   instead of silently using whichever method is listed first in
+    |   'detection_methods' above.
+    |
+    | - 'format_validation': when enabled, a detected version value that
+    |   doesn't match 'pattern' returns a 400 "Invalid API Version" error
+    |   instead of falling through to the less specific "unsupported
+    |   version" error.
+    |
+    */
+    'version_detection' => [
+        'require_explicit_version' => false,
+        'reject_conflicting_versions' => false,
+        'format_validation' => [
+            'enabled' => false,
+            'pattern' => '/^\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?$/',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Supported API Versions
     |--------------------------------------------------------------------------
     |

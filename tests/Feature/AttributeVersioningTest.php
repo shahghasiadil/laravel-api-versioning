@@ -107,6 +107,46 @@ test('standard_headers=false omits the standard headers', function () {
         ->assertHeader('X-API-Route-Versions', '2.0, 2.1');
 });
 
+test('require_explicit_version returns an Unspecified problem when no version is given', function () {
+    config(['api-versioning.version_detection.require_explicit_version' => true]);
+
+    // Note: /api/v2/users would itself be picked up by path-based detection,
+    // so this uses a route without a version segment in its URL.
+    $response = test()->get('/api/health');
+
+    $response->assertStatus(400)
+        ->assertJson([
+            'title' => 'Unspecified API Version',
+            'code' => 'ApiVersionUnspecified',
+        ]);
+});
+
+test('reject_conflicting_versions returns an Ambiguous problem when detection methods disagree', function () {
+    config(['api-versioning.version_detection.reject_conflicting_versions' => true]);
+
+    $response = test()->withHeaders(['X-API-Version' => '1.0'])
+        ->get('/api/v2/users?api-version=2.0');
+
+    $response->assertStatus(400)
+        ->assertJson([
+            'title' => 'Ambiguous API Version',
+            'code' => 'AmbiguousApiVersion',
+            'conflicts' => ['header' => '1.0', 'query' => '2.0'],
+        ]);
+});
+
+test('format_validation.enabled returns an Invalid problem for a malformed version', function () {
+    config(['api-versioning.version_detection.format_validation.enabled' => true]);
+
+    $response = getWithVersion('/api/v2/users', 'not-a-version!!');
+
+    $response->assertStatus(400)
+        ->assertJson([
+            'title' => 'Invalid API Version',
+            'code' => 'InvalidApiVersion',
+        ]);
+});
+
 /**
  * Call the given URI with API version header
  */

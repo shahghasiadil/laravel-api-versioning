@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Http\Responses;
 
 use Illuminate\Http\JsonResponse;
+use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 
 /**
  * RFC 7807 Problem Details for HTTP APIs
@@ -52,6 +53,7 @@ class ProblemDetailsResponse extends JsonResponse
         ?string $documentationUrl = null
     ): self {
         $extensions = [
+            'code' => VersionProblemReason::Unsupported->code(),
             'requested_version' => $requestedVersion,
             'supported_versions' => $supportedVersions,
         ];
@@ -65,8 +67,59 @@ class ProblemDetailsResponse extends JsonResponse
         }
 
         return new self(
-            title: 'Unsupported API Version',
+            title: VersionProblemReason::Unsupported->title(),
             detail: "API version '{$requestedVersion}' is not supported for this endpoint.",
+            status: 400,
+            type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
+            extensions: $extensions
+        );
+    }
+
+    /**
+     * Create a problem details response for a version-detection failure that
+     * isn't a plain "unsupported version": no version specified, an
+     * invalidly formatted version, or conflicting versions supplied across
+     * multiple detection methods.
+     *
+     * @param  string[]  $supportedVersions
+     * @param  array<string, mixed>  $context  Reason-specific extra data. Currently only
+     *         'conflicts' (array<string, string>: detection method => detected value) is used,
+     *         for {@see VersionProblemReason::Ambiguous}.
+     */
+    public static function versionProblem(
+        VersionProblemReason $reason,
+        ?string $requestedVersion,
+        array $supportedVersions,
+        array $context = [],
+        ?string $documentationUrl = null
+    ): self {
+        $extensions = [
+            'code' => $reason->code(),
+            'supported_versions' => $supportedVersions,
+        ];
+
+        if ($requestedVersion !== null) {
+            $extensions['requested_version'] = $requestedVersion;
+        }
+
+        if (isset($context['conflicts']) && is_array($context['conflicts']) && $context['conflicts'] !== []) {
+            $extensions['conflicts'] = $context['conflicts'];
+        }
+
+        if ($documentationUrl !== null) {
+            $extensions['documentation'] = $documentationUrl;
+        }
+
+        $detail = match ($reason) {
+            VersionProblemReason::Unspecified => 'No API version was specified and none could be assumed.',
+            VersionProblemReason::Invalid => "API version '{$requestedVersion}' is not a validly formatted version.",
+            VersionProblemReason::Ambiguous => 'Multiple, conflicting API versions were specified in the same request.',
+            VersionProblemReason::Unsupported => "API version '{$requestedVersion}' is not supported.",
+        };
+
+        return new self(
+            title: $reason->title(),
+            detail: $detail,
             status: 400,
             type: 'https://tools.ietf.org/html/rfc7231#section-6.5.1',
             extensions: $extensions

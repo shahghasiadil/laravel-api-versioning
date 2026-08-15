@@ -13,7 +13,7 @@ final class VersionAttributeMetadata
     /**
      * @param  string[]  $versions  Deduplicated, merged version list.
      * @param  array<string, array{sunset: string|null, replacedBy: string|null}>  $deprecated
-     *         Versions explicitly marked deprecated on the attribute that declared them.
+     *                                                                                          Versions explicitly marked deprecated on the attribute that declared them.
      */
     public function __construct(
         public readonly array $versions,

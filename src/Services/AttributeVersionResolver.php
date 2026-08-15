@@ -155,12 +155,12 @@ class AttributeVersionResolver
     /**
      * @param  string[]|null  $routeVersions
      * @param  array<string, array{sunset: string|null, replacedBy: string|null}>  $perVersionDeprecation
-     *         Versions explicitly marked deprecated on the #[ApiVersion]/#[MapToApiVersion]
-     *         attribute that declared them. A non-empty array here means per-version
-     *         deprecation is in use for this route, which takes precedence over the
-     *         coarse-grained #[Deprecated] attribute for deciding *which* versions are
-     *         deprecated (though #[Deprecated]'s message/sunset/replacedBy are still used
-     *         to fill in anything the attribute itself didn't specify).
+     *                                                                                                     Versions explicitly marked deprecated on the #[ApiVersion]/#[MapToApiVersion]
+     *                                                                                                     attribute that declared them. A non-empty array here means per-version
+     *                                                                                                     deprecation is in use for this route, which takes precedence over the
+     *                                                                                                     coarse-grained #[Deprecated] attribute for deciding *which* versions are
+     *                                                                                                     deprecated (though #[Deprecated]'s message/sunset/replacedBy are still used
+     *                                                                                                     to fill in anything the attribute itself didn't specify).
      */
     private function createVersionInfo(
         string $version,

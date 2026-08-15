@@ -158,6 +158,43 @@ class AttributeVersionResolver
     }
 
     /**
+     * The versions a route genuinely implements and can resolve a request
+     * against -- unlike {@see getAllVersionsForRoute()}, this excludes
+     * #[AdvertiseApiVersions] versions (which are discovery-only and never
+     * resolvable here). Used by the 'current'/'lowest' version selectors
+     * (see VersionSelectors), which must never pick a version the matched
+     * route can't actually serve.
+     *
+     * @return string[]
+     */
+    public function getImplementedVersionsForRoute(Route $route): array
+    {
+        $resolved = $this->reflectControllerAction($route);
+
+        if ($resolved === null) {
+            return $this->closureRoutesAreNeutral() ? $this->versionManager->getSupportedVersions() : [];
+        }
+
+        [$controllerClass, $controller, $action] = $resolved;
+
+        $reflectionClass = new ReflectionClass($controller);
+        $reflectionMethod = $reflectionClass->getMethod($action);
+
+        if ($reflectionMethod->getAttributes(ApiVersionNeutral::class) !== [] ||
+            $reflectionClass->getAttributes(ApiVersionNeutral::class) !== []) {
+            return $this->versionManager->getSupportedVersions();
+        }
+
+        $implemented = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionMethod))->versions;
+
+        if ($implemented === []) {
+            $implemented = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass))->versions;
+        }
+
+        return $implemented;
+    }
+
+    /**
      * The subset of a route's declared versions that are deprecated, whether
      * via per-version #[ApiVersion]/#[MapToApiVersion] attributes or a
      * coarse #[Deprecated] attribute (which deprecates every version the

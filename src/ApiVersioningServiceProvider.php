@@ -7,6 +7,7 @@ namespace ShahGhasiAdil\LaravelApiVersioning;
 use Illuminate\Config\Repository;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiCacheClearCommand;
@@ -70,6 +71,19 @@ class ApiVersioningServiceProvider extends ServiceProvider
 
         $this->app->singleton(SunsetPolicyManager::class, function (Application $app): SunsetPolicyManager {
             return new SunsetPolicyManager;
+        });
+
+        // Registered (not resolved) here: VersionManager must stay lazily
+        // resolved, so its config snapshot is taken at first real use, not
+        // at container-wiring time. AttributeVersionResolver is likewise
+        // only resolved lazily, inside the closure, when a route actually
+        // needs its implemented-versions list -- avoiding a resolution
+        // cycle between the two singletons (AttributeVersionResolver
+        // itself depends on VersionManager).
+        $this->app->resolving(VersionManager::class, function (VersionManager $versionManager, Application $app): void {
+            $versionManager->setRouteVersionsProvider(
+                static fn (Route $route): array => $app->make(AttributeVersionResolver::class)->getImplementedVersionsForRoute($route)
+            );
         });
     }
 

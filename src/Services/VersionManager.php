@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
+use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\ApiVersionReader;
@@ -13,15 +15,40 @@ use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\HeaderApiVersionR
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\MediaTypeApiVersionReader;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\QueryStringApiVersionReader;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\UrlSegmentApiVersionReader;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionSelectors\ApiVersionSelector;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionSelectors\ConstantApiVersionSelector;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionSelectors\CurrentImplementationApiVersionSelector;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionSelectors\DefaultApiVersionSelector;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionSelectors\LowestImplementedApiVersionSelector;
 
 class VersionManager
 {
+    /**
+     * Supplies the versions the request's matched route genuinely implements
+     * (see AttributeVersionResolver::getImplementedVersionsForRoute()), for
+     * the 'current'/'lowest' selectors. Wired up in
+     * ApiVersioningServiceProvider::boot() (after both singletons exist,
+     * so this stays a plain closure rather than a constructor dependency
+     * on AttributeVersionResolver, which would otherwise cycle back here).
+     *
+     * @var (Closure(Route): string[])|null
+     */
+    private ?Closure $routeVersionsProvider = null;
+
     /**
      * @param  array<string, mixed>  $config
      */
     public function __construct(
         private readonly array $config
     ) {}
+
+    /**
+     * @param  Closure(Route): string[]  $provider
+     */
+    public function setRouteVersionsProvider(Closure $provider): void
+    {
+        $this->routeVersionsProvider = $provider;
+    }
 
     public function detectVersionFromRequest(Request $request): string
     {
@@ -30,9 +57,7 @@ class VersionManager
         $version = $this->resolveDetectedVersion($detected);
 
         if ($version === null) {
-            $requireExplicit = (bool) ($this->versionDetectionConfig()['require_explicit_version'] ?? false);
-
-            if ($requireExplicit) {
+            if ($this->requiresExplicitVersion()) {
                 throw new UnsupportedVersionException(
                     message: 'No API version was specified and none could be assumed.',
                     supportedVersions: $this->getSupportedVersions(),
@@ -41,8 +66,7 @@ class VersionManager
                 );
             }
 
-            /** @var string $version */
-            $version = $this->config['default_version'];
+            $version = $this->selectVersion($request);
         }
 
         if (! $this->isValidVersionFormat($version)) {
@@ -252,6 +276,67 @@ class VersionManager
         $versionDetection = $this->config['version_detection'] ?? [];
 
         return is_array($versionDetection) ? $versionDetection : [];
+    }
+
+    /**
+     * Whether an unversioned request should be rejected (400
+     * ApiVersionUnspecified) instead of having a version assumed for it.
+     *
+     * 'assume_default_when_unspecified' (default true) is the primary
+     * toggle; the older 'version_detection.require_explicit_version' is
+     * kept as an alias so existing config files keep working -- either one
+     * being set to require an explicit version is enough to require one.
+     */
+    public function requiresExplicitVersion(): bool
+    {
+        $requireExplicit = (bool) ($this->versionDetectionConfig()['require_explicit_version'] ?? false);
+
+        /** @var mixed $assumeDefault */
+        $assumeDefault = $this->config['assume_default_when_unspecified'] ?? true;
+
+        return $requireExplicit || $assumeDefault === false;
+    }
+
+    /**
+     * Choose a version to assume for a request that specified none, per
+     * the configured 'version_selector' ('default' | 'current' | 'lowest' |
+     * 'constant'; defaults to 'default', this package's original
+     * always-assume-the-configured-default behavior).
+     */
+    private function selectVersion(Request $request): string
+    {
+        $implementedVersions = [];
+
+        if ($this->routeVersionsProvider !== null) {
+            $route = $request->route();
+            if ($route instanceof Route) {
+                $implementedVersions = ($this->routeVersionsProvider)($route);
+            }
+        }
+
+        return $this->buildSelector()->select($implementedVersions, $this->getDefaultVersion());
+    }
+
+    private function buildSelector(): ApiVersionSelector
+    {
+        /** @var mixed $nameRaw */
+        $nameRaw = $this->config['version_selector'] ?? 'default';
+        $name = is_string($nameRaw) ? $nameRaw : 'default';
+
+        return match ($name) {
+            'current' => new CurrentImplementationApiVersionSelector,
+            'lowest' => new LowestImplementedApiVersionSelector,
+            'constant' => new ConstantApiVersionSelector($this->constantSelectorVersion()),
+            default => new DefaultApiVersionSelector,
+        };
+    }
+
+    private function constantSelectorVersion(): string
+    {
+        /** @var mixed $constant */
+        $constant = $this->config['version_selector_constant'] ?? null;
+
+        return is_string($constant) && $constant !== '' ? $constant : $this->getDefaultVersion();
     }
 
     public function isSupportedVersion(string $version): bool

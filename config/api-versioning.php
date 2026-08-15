@@ -110,6 +110,45 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Assume Default Version When Unspecified
+    |--------------------------------------------------------------------------
+    |
+    | Whether a request that specifies no API version should have one
+    | assumed for it. Defaults to true, preserving this package's original
+    | behavior; set to false for the stricter posture aspnet-api-versioning
+    | defaults to, where an unversioned request is a 400 "Unspecified API
+    | Version" error rather than a silent default. This is the same switch
+    | as 'version_detection.require_explicit_version' above (either one
+    | requiring an explicit version is enough to require one) -- prefer
+    | this one; 'require_explicit_version' is kept only for compatibility.
+    |
+    */
+    'assume_default_when_unspecified' => true,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Version Selector
+    |--------------------------------------------------------------------------
+    |
+    | When a version is assumed (see above), this chooses *which* version:
+    |
+    | - 'default' (default): always 'default_version' above. This
+    |   package's original behavior.
+    | - 'current': the highest non-prerelease version the matched route
+    |   implements, falling back to 'default_version' if it implements
+    |   none (or only prereleases).
+    | - 'lowest': the lowest non-prerelease version the matched route
+    |   implements, with the same fallback.
+    | - 'constant': always 'version_selector_constant' below, ignoring
+    |   both the route and 'default_version'.
+    |
+    */
+    'version_selector' => 'default',
+
+    'version_selector_constant' => null,
+
+    /*
+    |--------------------------------------------------------------------------
     | Closure Routes
     |--------------------------------------------------------------------------
     |

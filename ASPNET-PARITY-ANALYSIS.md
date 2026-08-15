@@ -15,21 +15,21 @@ what is wrong, and what is worth porting.
 | aspnet-api-versioning concept | Status here | Section |
 | --- | --- | --- |
 | `[ApiVersion]` / `[MapToApiVersion]` / `[ApiVersionNeutral]` | Present | — |
-| `[ApiVersion(Deprecated = true)]` (per-version deprecation) | **Missing** — deprecation is all-or-nothing per class/method | [C2](#c2-per-version-deprecation) |
-| `[AdvertiseApiVersions]` | **Missing** | [C3](#c3-advertiseapiversions) |
-| `ApiVersion` type: group date, major, minor, status | **Missing** — versions are raw strings | [C1](#c1-a-real-apiversion-value-object) |
-| `IApiVersionReader` + `ApiVersionReader.Combine` | Partial — hardcoded `match` in `VersionManager` | [C4](#c4-version-readers-as-strategy-objects) |
-| Ambiguous version detection (`AmbiguousApiVersion`) | **Missing** — first reader wins silently | [A7](#a7-conflicting-version-sources-are-silently-resolved-first-wins) |
-| `IApiVersionSelector` (default / current / lowest / constant) | **Missing** — always the configured default | [C5](#c5-version-selectors) |
-| `AssumeDefaultVersionWhenUnspecified` | **Missing** — always assumed | [C5](#c5-version-selectors) |
-| `ReportApiVersions` → `api-supported-versions` / `api-deprecated-versions` | Partial — non-standard `X-API-*`, always on, global not per-endpoint | [B1](#b1-standard-reporting-headers) |
-| RFC 8594 `Sunset` + RFC 8288 `Link; rel="sunset"` | **Missing** — custom `X-API-Sunset` | [C6](#c6-rfc-8594-sunset-policies) |
-| Problem types: unsupported / unspecified / invalid / ambiguous | Partial — only "unsupported" | [B2](#b2-a-complete-problem-details-vocabulary) |
-| `UnsupportedApiVersionStatusCode` (400 / 404 / 501) | **Missing** — hardcoded 400 | [B2](#b2-a-complete-problem-details-vocabulary) |
-| Conventions API (version without touching the class) | **Missing** | [C7](#c7-conventions-api) |
-| `ApiVersionRouteConstraint` / url-segment routing | **Missing** — routes must be duplicated per version | [C8](#c8-route-level-url-segment-versioning) |
-| API explorer / versioned OpenAPI documents | **Missing** | [C9](#c9-versioned-openapi--description-provider) |
-| `ValidateApiVersioningOptions` at startup | Partial — `api:version:health`, opt-in only | [B5](#b5-make-the-health-check-enforceable) |
+| `[ApiVersion(Deprecated = true)]` (per-version deprecation) | **Done** | [C2](#c2-per-version-deprecation) |
+| `[AdvertiseApiVersions]` | **Done** | [C3](#c3-advertiseapiversions) |
+| `ApiVersion` type: group date, major, minor, status | **Done** — `ValueObjects\ApiVersion`, `VersionComparator` delegates to it | [C1](#c1-a-real-apiversion-value-object) |
+| `IApiVersionReader` + `ApiVersionReader.Combine` | **Done** — `Services\VersionReaders\*`, `detection_methods` kept as a shim | [C4](#c4-version-readers-as-strategy-objects) |
+| Ambiguous version detection (`AmbiguousApiVersion`) | **Done** | [A7](#a7-conflicting-version-sources-are-silently-resolved-first-wins) |
+| `IApiVersionSelector` (default / current / lowest / constant) | **Done** — `Services\VersionSelectors\*` | [C5](#c5-version-selectors) |
+| `AssumeDefaultVersionWhenUnspecified` | **Done** — defaults `true`; `require_explicit_version` kept as an alias | [C5](#c5-version-selectors) |
+| `ReportApiVersions` → `api-supported-versions` / `api-deprecated-versions` | **Done** | [B1](#b1-standard-reporting-headers) |
+| RFC 8594 `Sunset` + RFC 8288 `Link; rel="sunset"` | **Done** | [C6](#c6-rfc-8594-sunset-policies) |
+| Problem types: unsupported / unspecified / invalid / ambiguous | **Done** | [B2](#b2-a-complete-problem-details-vocabulary) |
+| `UnsupportedApiVersionStatusCode` (400 / 404 / 501) | **Missing** — still hardcoded 400 | [B2](#b2-a-complete-problem-details-vocabulary) |
+| Conventions API (version without touching the class) | **Done** — `ApiVersioning::conventions()` | [C7](#c7-conventions-api) |
+| `ApiVersionRouteConstraint` / url-segment routing | **Done** — `Route::pattern('version', ...)` + `Route::apiVersion([...])->group()` | [C8](#c8-route-level-url-segment-versioning) |
+| API explorer / versioned OpenAPI documents | **Done** (core provider) — `OpenApi\ApiVersionDescriptionProvider`; Scramble/L5-Swagger adapters not built | [C9](#c9-versioned-openapi--description-provider) |
+| `ValidateApiVersioningOptions` at startup | **Done** — `--strict` on `api:version:health`, opt-in `validate_on_boot` | [B5](#b5-make-the-health-check-enforceable) |
 
 ---
 

@@ -15,6 +15,7 @@ use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionConfigCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionHealthCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionsCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\MakeVersionedControllerCommand;
+use ShahGhasiAdil\LaravelApiVersioning\Conventions\ConventionRegistry;
 use ShahGhasiAdil\LaravelApiVersioning\Http\RequestMacros;
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
@@ -57,7 +58,8 @@ class ApiVersioningServiceProvider extends ServiceProvider
         $this->app->singleton(AttributeVersionResolver::class, function (Application $app): AttributeVersionResolver {
             return new AttributeVersionResolver(
                 $app->make(VersionManager::class),
-                $app->make(AttributeCacheService::class)
+                $app->make(AttributeCacheService::class),
+                $app->make(ConventionRegistry::class),
             );
         });
 
@@ -71,6 +73,10 @@ class ApiVersioningServiceProvider extends ServiceProvider
 
         $this->app->singleton(SunsetPolicyManager::class, function (Application $app): SunsetPolicyManager {
             return new SunsetPolicyManager;
+        });
+
+        $this->app->singleton(ConventionRegistry::class, function (Application $app): ConventionRegistry {
+            return new ConventionRegistry;
         });
 
         // Registered (not resolved) here: VersionManager must stay lazily

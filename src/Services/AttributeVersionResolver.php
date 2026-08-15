@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
 use Illuminate\Routing\Route;
+use Illuminate\Support\Str;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
@@ -15,6 +16,7 @@ use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecatio
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\MapToApiVersion;
+use ShahGhasiAdil\LaravelApiVersioning\Conventions\ConventionRegistry;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 
 class AttributeVersionResolver
@@ -28,7 +30,8 @@ class AttributeVersionResolver
 
     public function __construct(
         private readonly VersionManager $versionManager,
-        private readonly AttributeCacheService $cache
+        private readonly AttributeCacheService $cache,
+        private readonly ConventionRegistry $conventions = new ConventionRegistry,
     ) {}
 
     public function resolveVersionForRoute(Route $route, string $requestedVersion): ?VersionInfo
@@ -36,19 +39,7 @@ class AttributeVersionResolver
         $resolved = $this->reflectControllerAction($route);
 
         if ($resolved === null) {
-            // Closure routes have no class/method to carry attributes, so
-            // there is nothing to resolve against. By default they are
-            // treated as version-neutral (respond to every supported
-            // version), matching #[ApiVersionNeutral]; set
-            // 'closure_routes' => 'reject' to restore the original
-            // behavior of rejecting every version on closure routes.
-            return $this->closureRoutesAreNeutral()
-                ? $this->createVersionInfo(
-                    $requestedVersion,
-                    true,
-                    routeVersions: $this->versionManager->getSupportedVersions()
-                )
-                : null;
+            return $this->resolveClosureRoute($route, $requestedVersion);
         }
 
         [$controllerClass, $controller, $action] = $resolved;
@@ -61,7 +52,7 @@ class AttributeVersionResolver
         $cacheKey = $this->cache->generateRouteKey($controllerClass, $action, $requestedVersion);
 
         /** @var VersionInfo|null $result */
-        $result = $this->cache->remember($cacheKey, function () use ($controller, $action, $requestedVersion) {
+        $result = $this->cache->remember($cacheKey, function () use ($controllerClass, $controller, $action, $requestedVersion) {
             $reflectionClass = new ReflectionClass($controller);
             $reflectionMethod = $reflectionClass->getMethod($action);
 
@@ -106,6 +97,16 @@ class AttributeVersionResolver
                         perVersionDeprecation: $classMetadata->deprecated,
                     );
                 }
+
+                // No attributes on either method or class at all: fall back
+                // to conventions registered via ApiVersioning::conventions().
+                // Attributes always win when present, even partially (a
+                // non-matching version on an attributed class/method is
+                // still an attribute "claiming" that class/method) -- this
+                // branch is only reached when there were none whatsoever.
+                if ($classMetadata->versions === []) {
+                    return $this->resolveFromConventions($controllerClass, $action, $requestedVersion);
+                }
             }
 
             return null;
@@ -117,6 +118,101 @@ class AttributeVersionResolver
     }
 
     /**
+     * @param  class-string  $controllerClass
+     */
+    private function resolveFromConventions(string $controllerClass, string $action, string $requestedVersion): ?VersionInfo
+    {
+        if ($this->conventions->isControllerNeutral($controllerClass) || $this->conventions->isActionNeutral($controllerClass, $action)) {
+            return $this->createVersionInfo(
+                $requestedVersion,
+                true,
+                routeVersions: $this->versionManager->getSupportedVersions()
+            );
+        }
+
+        $actionVersions = $this->conventions->getActionVersions($controllerClass, $action);
+        $versions = $actionVersions !== [] ? $actionVersions : $this->conventions->getControllerVersions($controllerClass);
+        $deprecations = $actionVersions !== []
+            ? $this->conventions->getActionDeprecations($controllerClass, $action)
+            : $this->conventions->getControllerDeprecations($controllerClass);
+
+        if ($versions === [] || ! in_array($requestedVersion, $versions, true)) {
+            return null;
+        }
+
+        return $this->createVersionInfo(
+            $requestedVersion,
+            false,
+            routeVersions: $versions,
+            perVersionDeprecation: $deprecations,
+        );
+    }
+
+    /**
+     * Closure routes have no class/method to carry attributes on, so
+     * there's nothing to reflect. In order of precedence:
+     *
+     * 1. A route() convention matching this URI (see ConventionBuilder) --
+     *    the only way to give a closure route real, non-neutral versions.
+     * 2. 'closure_routes' config (default 'neutral', matching
+     *    #[ApiVersionNeutral]; 'reject' rejects every version).
+     */
+    private function resolveClosureRoute(Route $route, string $requestedVersion): ?VersionInfo
+    {
+        if ($this->hasRouteConventions()) {
+            $uri = $route->uri();
+
+            if ($this->matchesNeutralRoutePattern($uri)) {
+                return $this->createVersionInfo(
+                    $requestedVersion,
+                    true,
+                    routeVersions: $this->versionManager->getSupportedVersions()
+                );
+            }
+
+            $routeVersions = $this->matchingRouteConventionVersions($uri);
+            if ($routeVersions !== null) {
+                return in_array($requestedVersion, $routeVersions, true)
+                    ? $this->createVersionInfo($requestedVersion, false, routeVersions: $routeVersions)
+                    : null;
+            }
+        }
+
+        return $this->closureRoutesAreNeutral()
+            ? $this->createVersionInfo(
+                $requestedVersion,
+                true,
+                routeVersions: $this->versionManager->getSupportedVersions()
+            )
+            : null;
+    }
+
+    private function matchesNeutralRoutePattern(string $uri): bool
+    {
+        foreach ($this->conventions->getNeutralRoutePatterns() as $pattern) {
+            if (Str::is($pattern, $uri)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return string[]|null
+     */
+    private function matchingRouteConventionVersions(string $uri): ?array
+    {
+        foreach ($this->conventions->getRouteVersions() as $pattern => $versions) {
+            if (Str::is($pattern, $uri)) {
+                return $versions;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return string[]
      */
     public function getAllVersionsForRoute(Route $route): array
@@ -124,14 +220,14 @@ class AttributeVersionResolver
         $resolved = $this->reflectControllerAction($route);
 
         if ($resolved === null) {
-            return $this->closureRoutesAreNeutral() ? $this->versionManager->getSupportedVersions() : [];
+            return $this->closureRouteVersions($route);
         }
 
         [$controllerClass, $controller, $action] = $resolved;
         $cacheKey = $this->cache->generateRouteVersionsKey($controllerClass, $action);
 
         /** @var string[] $result */
-        $result = $this->cache->remember($cacheKey, function () use ($controller, $action) {
+        $result = $this->cache->remember($cacheKey, function () use ($controllerClass, $controller, $action) {
             $reflectionClass = new ReflectionClass($controller);
             $reflectionMethod = $reflectionClass->getMethod($action);
 
@@ -151,10 +247,53 @@ class AttributeVersionResolver
             // discovery data (headers, the api:versions command).
             $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
 
-            return array_values(array_unique([...$implemented, ...$advertised]));
+            $versions = array_values(array_unique([...$implemented, ...$advertised]));
+
+            return $versions !== [] ? $versions : $this->conventionVersions($controllerClass, $action);
         });
 
         return $result;
+    }
+
+    /**
+     * @return string[]
+     */
+    private function closureRouteVersions(Route $route): array
+    {
+        if ($this->hasRouteConventions()) {
+            $uri = $route->uri();
+
+            if ($this->matchesNeutralRoutePattern($uri)) {
+                return $this->versionManager->getSupportedVersions();
+            }
+
+            $routeVersions = $this->matchingRouteConventionVersions($uri);
+            if ($routeVersions !== null) {
+                return $routeVersions;
+            }
+        }
+
+        return $this->closureRoutesAreNeutral() ? $this->versionManager->getSupportedVersions() : [];
+    }
+
+    private function hasRouteConventions(): bool
+    {
+        return $this->conventions->getNeutralRoutePatterns() !== [] || $this->conventions->getRouteVersions() !== [];
+    }
+
+    /**
+     * @param  class-string  $controllerClass
+     * @return string[]
+     */
+    private function conventionVersions(string $controllerClass, string $action): array
+    {
+        if ($this->conventions->isControllerNeutral($controllerClass) || $this->conventions->isActionNeutral($controllerClass, $action)) {
+            return $this->versionManager->getSupportedVersions();
+        }
+
+        $actionVersions = $this->conventions->getActionVersions($controllerClass, $action);
+
+        return $actionVersions !== [] ? $actionVersions : $this->conventions->getControllerVersions($controllerClass);
     }
 
     /**
@@ -172,7 +311,7 @@ class AttributeVersionResolver
         $resolved = $this->reflectControllerAction($route);
 
         if ($resolved === null) {
-            return $this->closureRoutesAreNeutral() ? $this->versionManager->getSupportedVersions() : [];
+            return $this->closureRouteVersions($route);
         }
 
         [$controllerClass, $controller, $action] = $resolved;
@@ -191,7 +330,7 @@ class AttributeVersionResolver
             $implemented = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass))->versions;
         }
 
-        return $implemented;
+        return $implemented !== [] ? $implemented : $this->conventionVersions($controllerClass, $action);
     }
 
     /**
@@ -214,7 +353,7 @@ class AttributeVersionResolver
         $cacheKey = $this->cache->generateRouteDeprecatedVersionsKey($controllerClass, $action);
 
         /** @var string[] $result */
-        $result = $this->cache->remember($cacheKey, function () use ($controller, $action) {
+        $result = $this->cache->remember($cacheKey, function () use ($controllerClass, $controller, $action) {
             $reflectionClass = new ReflectionClass($controller);
             $reflectionMethod = $reflectionClass->getMethod($action);
 
@@ -228,6 +367,16 @@ class AttributeVersionResolver
             $metadata = $methodMetadata->versions !== []
                 ? $methodMetadata
                 : $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass));
+
+            if ($metadata->versions === []) {
+                // No attributes at all: fall back to convention-declared deprecations.
+                $actionDeprecations = $this->conventions->getActionDeprecations($controllerClass, $action);
+                $deprecations = $actionDeprecations !== []
+                    ? $actionDeprecations
+                    : $this->conventions->getControllerDeprecations($controllerClass);
+
+                return array_keys($deprecations);
+            }
 
             if ($metadata->deprecated !== []) {
                 $deprecatedImplemented = array_keys($metadata->deprecated);

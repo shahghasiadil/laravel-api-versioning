@@ -22,11 +22,14 @@ class SunsetPolicyManager
 {
     public function getPolicy(string $version, ?string $attributeSunsetDate = null): ?SunsetPolicy
     {
-        /** @var array<string, array<string, mixed>> $policies */
+        /** @var array<string, mixed> $policies */
         $policies = config('api-versioning.sunset_policies', []);
 
-        if (isset($policies[$version]) && is_array($policies[$version])) {
-            return $this->buildFromConfig($policies[$version]);
+        /** @var mixed $policy */
+        $policy = $policies[$version] ?? null;
+
+        if (is_array($policy)) {
+            return $this->buildFromConfig($policy);
         }
 
         if ($attributeSunsetDate !== null) {
@@ -39,18 +42,28 @@ class SunsetPolicyManager
     }
 
     /**
-     * @param  array<string, mixed>  $policy
+     * @param  array<array-key, mixed>  $policy
      */
     private function buildFromConfig(array $policy): SunsetPolicy
     {
-        $date = isset($policy['date']) ? $this->parseDate((string) $policy['date']) : null;
+        /** @var mixed $dateRaw */
+        $dateRaw = $policy['date'] ?? null;
+        $date = is_string($dateRaw) ? $this->parseDate($dateRaw) : null;
 
         $links = [];
-        if (isset($policy['link']) && $policy['link'] !== '') {
+
+        /** @var mixed $linkRaw */
+        $linkRaw = $policy['link'] ?? null;
+        if (is_string($linkRaw) && $linkRaw !== '') {
+            /** @var mixed $typeRaw */
+            $typeRaw = $policy['link_type'] ?? null;
+            /** @var mixed $titleRaw */
+            $titleRaw = $policy['link_title'] ?? null;
+
             $links[] = [
-                'url' => (string) $policy['link'],
-                'type' => isset($policy['link_type']) ? (string) $policy['link_type'] : null,
-                'title' => isset($policy['link_title']) ? (string) $policy['link_title'] : null,
+                'url' => $linkRaw,
+                'type' => is_string($typeRaw) ? $typeRaw : null,
+                'title' => is_string($titleRaw) ? $titleRaw : null,
             ];
         }
 

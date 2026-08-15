@@ -31,30 +31,6 @@ parameters:
 			path: src/Http/Resources/VersionedJsonResource.php
 
 		-
-			message: '#^Cannot access offset ''version_inheritance'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Http/Resources/VersionedResourceCollection.php
-
-		-
-			message: '#^Cannot access offset ''version_method_mapping'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Http/Resources/VersionedResourceCollection.php
-
-		-
-			message: '#^Cannot access offset mixed on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: src/Http/Resources/VersionedResourceCollection.php
-
-		-
-			message: '#^Cannot access offset string on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Http/Resources/VersionedResourceCollection.php
-
-		-
 			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Http\\Resources\\VersionedResourceCollection\:\:callMethodIfExists\(\) should return array\<string, mixed\> but returns array\<mixed\>\.$#'
 			identifier: return.type
 			count: 1
@@ -64,18 +40,6 @@ parameters:
 			message: '#^Parameter \#1 \$callback of function call_user_func expects callable\(\)\: mixed, array\{\$this\(ShahGhasiAdil\\LaravelApiVersioning\\Http\\Resources\\VersionedResourceCollection\), string\} given\.$#'
 			identifier: argument.type
 			count: 1
-			path: src/Http/Resources/VersionedResourceCollection.php
-
-		-
-			message: '#^Parameter \#1 \$method of method ShahGhasiAdil\\LaravelApiVersioning\\Http\\Resources\\VersionedResourceCollection\:\:callMethodIfExists\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Http/Resources/VersionedResourceCollection.php
-
-		-
-			message: '#^Parameter \#1 \$method of method ShahGhasiAdil\\LaravelApiVersioning\\Http\\Resources\\VersionedResourceCollection\:\:methodExists\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
 			path: src/Http/Resources/VersionedResourceCollection.php
 
 		-
@@ -95,42 +59,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Http/Responses/ProblemDetailsResponse.php
-
-		-
-			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:createVersionInfo\(\) has parameter \$class with generic class ReflectionClass but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeVersionResolver\:\:getDeprecationInfo\(\) has parameter \$reflection with generic class ReflectionClass but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Parameter \#1 \$controller of method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeCacheService\:\:generateRouteKey\(\) expects string, class\-string\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Parameter \#1 \$controller of method ShahGhasiAdil\\LaravelApiVersioning\\Services\\AttributeCacheService\:\:generateRouteVersionsKey\(\) expects string, class\-string\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Parameter \#1 \$object of function get_class expects object, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Services/AttributeVersionResolver.php
-
-		-
-			message: '#^Parameter \#1 \$objectOrClass of class ReflectionClass constructor expects class\-string\<T of object\>\|T of object, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Services/AttributeVersionResolver.php
 
 		-
 			message: '#^Match arm comparison between ''\='' and ''\='' is always true\.$#'
@@ -203,9 +131,3 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: src/Services/VersionConfigService.php
-
-		-
-			message: '#^Cannot cast mixed to string\.$#'
-			identifier: cast.string
-			count: 2
-			path: src/Services/VersionManager.php

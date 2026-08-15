@@ -35,9 +35,9 @@ class RequestMacros
 
         Request::macro('isApiVersionDeprecated', function (): bool {
             /** @var Request $this */
-            $versionInfo = $this->apiVersionInfo();
+            $versionInfo = $this->attributes->get('api_version_info');
 
-            return $versionInfo !== null && $versionInfo->isDeprecated;
+            return $versionInfo instanceof VersionInfo && $versionInfo->isDeprecated;
         });
     }
 }

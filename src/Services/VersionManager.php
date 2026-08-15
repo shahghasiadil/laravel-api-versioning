@@ -24,8 +24,7 @@ class VersionManager
         $version = $this->resolveDetectedVersion($detected);
 
         if ($version === null) {
-            /** @var bool $requireExplicit */
-            $requireExplicit = (bool) ($this->config['version_detection']['require_explicit_version'] ?? false);
+            $requireExplicit = (bool) ($this->versionDetectionConfig()['require_explicit_version'] ?? false);
 
             if ($requireExplicit) {
                 throw new UnsupportedVersionException(
@@ -78,9 +77,14 @@ class VersionManager
                 continue;
             }
 
+            /** @var mixed $headerName */
+            $headerName = $config['header_name'] ?? 'X-API-Version';
+            /** @var mixed $parameterName */
+            $parameterName = $config['parameter_name'] ?? 'api-version';
+
             $value = match ($method) {
-                'header' => $request->header((string) ($config['header_name'] ?? 'X-API-Version')),
-                'query' => $request->query((string) ($config['parameter_name'] ?? 'api-version')),
+                'header' => $request->header(is_string($headerName) ? $headerName : 'X-API-Version'),
+                'query' => $request->query(is_string($parameterName) ? $parameterName : 'api-version'),
                 'path' => $this->extractVersionFromPath($request, $config),
                 'media_type' => $this->extractVersionFromMediaType($request, $config),
                 default => null
@@ -118,8 +122,7 @@ class VersionManager
             return $distinctValues[0];
         }
 
-        /** @var bool $rejectConflicts */
-        $rejectConflicts = (bool) ($this->config['version_detection']['reject_conflicting_versions'] ?? false);
+        $rejectConflicts = (bool) ($this->versionDetectionConfig()['reject_conflicting_versions'] ?? false);
 
         if ($rejectConflicts) {
             throw new UnsupportedVersionException(
@@ -187,17 +190,30 @@ class VersionManager
      */
     private function isValidVersionFormat(string $version): bool
     {
-        /** @var array<string, mixed> $formatValidation */
-        $formatValidation = $this->config['version_detection']['format_validation'] ?? [];
+        /** @var mixed $formatValidationRaw */
+        $formatValidationRaw = $this->versionDetectionConfig()['format_validation'] ?? [];
+        $formatValidation = is_array($formatValidationRaw) ? $formatValidationRaw : [];
 
         if (! (bool) ($formatValidation['enabled'] ?? false)) {
             return true;
         }
 
-        /** @var string $pattern */
-        $pattern = $formatValidation['pattern'] ?? '/^\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?$/';
+        /** @var mixed $patternRaw */
+        $patternRaw = $formatValidation['pattern'] ?? null;
+        $pattern = is_string($patternRaw) ? $patternRaw : '/^\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?$/';
 
         return preg_match($pattern, $version) === 1;
+    }
+
+    /**
+     * @return array<int|string, mixed>
+     */
+    private function versionDetectionConfig(): array
+    {
+        /** @var mixed $versionDetection */
+        $versionDetection = $this->config['version_detection'] ?? [];
+
+        return is_array($versionDetection) ? $versionDetection : [];
     }
 
     public function isSupportedVersion(string $version): bool

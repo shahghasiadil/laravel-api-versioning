@@ -49,7 +49,9 @@ class ApiVersionsCommand extends Command
         $rows = [];
 
         foreach ($routes as $route) {
-            $methods = implode('|', $route->methods());
+            /** @var string[] $routeMethods */
+            $routeMethods = $route->methods();
+            $methods = implode('|', $routeMethods);
             $uri = $route->uri();
             $action = $route->getActionName();
 

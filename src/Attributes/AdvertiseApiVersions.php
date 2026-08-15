@@ -6,6 +6,7 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Attributes;
 
 use Attribute;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecation;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
 
 /**
  * Declares that a version exists and is implemented elsewhere (another
@@ -15,9 +16,14 @@ use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecatio
  * version only appears in version-discovery data (getAllVersionsForRoute(),
  * the api-supported-versions/X-API-Route-Versions headers, and the
  * `api:versions` command) so clients and API explorers know it exists.
+ *
+ * Implementing HasVersions here is safe: AttributeVersionResolver never
+ * collects "implemented" versions via a HasVersions instanceof filter (which
+ * would wrongly sweep this class in too) -- it fetches #[ApiVersion] and
+ * #[MapToApiVersion] explicitly by class instead.
  */
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
-class AdvertiseApiVersions implements HasVersionDeprecation
+class AdvertiseApiVersions implements HasVersionDeprecation, HasVersions
 {
     /**
      * @var string[]

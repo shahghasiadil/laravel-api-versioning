@@ -9,10 +9,12 @@ use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\AdvertiseApiVersions;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecation;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\MapToApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 
 class AttributeVersionResolver
@@ -31,10 +33,9 @@ class AttributeVersionResolver
 
     public function resolveVersionForRoute(Route $route, string $requestedVersion): ?VersionInfo
     {
-        $controller = $route->getController();
-        $action = $route->getActionMethod();
+        $resolved = $this->reflectControllerAction($route);
 
-        if ($controller === null) {
+        if ($resolved === null) {
             // Closure routes have no class/method to carry attributes, so
             // there is nothing to resolve against. By default they are
             // treated as version-neutral (respond to every supported
@@ -50,7 +51,7 @@ class AttributeVersionResolver
                 : null;
         }
 
-        $controllerClass = get_class($controller);
+        [$controllerClass, $controller, $action] = $resolved;
         $memoryKey = "{$controllerClass}@{$action}:{$requestedVersion}";
 
         if (array_key_exists($memoryKey, self::$memoryCache)) {
@@ -74,10 +75,7 @@ class AttributeVersionResolver
                 );
             }
 
-            // Single pass per reflector using IS_INSTANCEOF to fetch both
-            // ApiVersion and MapToApiVersion in one getAttributes() call
-            $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-            $methodMetadata = $this->collectVersionMetadata($methodVersionAttrs);
+            $methodMetadata = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionMethod));
 
             if ($methodMetadata->versions !== [] && in_array($requestedVersion, $methodMetadata->versions, true)) {
                 $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
@@ -94,8 +92,7 @@ class AttributeVersionResolver
 
             // Only look at class-level if method had no version attributes
             if ($methodMetadata->versions === []) {
-                $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-                $classMetadata = $this->collectVersionMetadata($classVersionAttrs);
+                $classMetadata = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass));
 
                 if ($classMetadata->versions !== [] && in_array($requestedVersion, $classMetadata->versions, true)) {
                     $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
@@ -124,14 +121,13 @@ class AttributeVersionResolver
      */
     public function getAllVersionsForRoute(Route $route): array
     {
-        $controller = $route->getController();
-        $action = $route->getActionMethod();
+        $resolved = $this->reflectControllerAction($route);
 
-        if ($controller === null) {
+        if ($resolved === null) {
             return $this->closureRoutesAreNeutral() ? $this->versionManager->getSupportedVersions() : [];
         }
 
-        $controllerClass = get_class($controller);
+        [$controllerClass, $controller, $action] = $resolved;
         $cacheKey = $this->cache->generateRouteVersionsKey($controllerClass, $action);
 
         /** @var string[] $result */
@@ -144,15 +140,10 @@ class AttributeVersionResolver
                 return $this->versionManager->getSupportedVersions();
             }
 
-            // Single pass: get all HasVersions attributes from method
-            $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-            $methodVersions = $this->collectVersionMetadata($methodVersionAttrs)->versions;
+            $implemented = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionMethod))->versions;
 
-            $implemented = $methodVersions;
             if ($implemented === []) {
-                // Fall back to class-level
-                $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-                $implemented = $this->collectVersionMetadata($classVersionAttrs)->versions;
+                $implemented = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass))->versions;
             }
 
             // #[AdvertiseApiVersions] declares versions implemented elsewhere;
@@ -176,14 +167,13 @@ class AttributeVersionResolver
      */
     public function getDeprecatedVersionsForRoute(Route $route): array
     {
-        $controller = $route->getController();
-        $action = $route->getActionMethod();
+        $resolved = $this->reflectControllerAction($route);
 
-        if ($controller === null) {
+        if ($resolved === null) {
             return [];
         }
 
-        $controllerClass = get_class($controller);
+        [$controllerClass, $controller, $action] = $resolved;
         $cacheKey = $this->cache->generateRouteDeprecatedVersionsKey($controllerClass, $action);
 
         /** @var string[] $result */
@@ -196,12 +186,11 @@ class AttributeVersionResolver
                 return [];
             }
 
-            $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-            $methodMetadata = $this->collectVersionMetadata($methodVersionAttrs);
+            $methodMetadata = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionMethod));
 
             $metadata = $methodMetadata->versions !== []
                 ? $methodMetadata
-                : $this->collectVersionMetadata($reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF));
+                : $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass));
 
             if ($metadata->deprecated !== []) {
                 $deprecatedImplemented = array_keys($metadata->deprecated);
@@ -230,12 +219,30 @@ class AttributeVersionResolver
     }
 
     /**
+     * Narrow the route's controller from `mixed` (its genuine declared
+     * return type in Illuminate\Routing\Route) to a real object, or null
+     * for a closure route.
+     *
+     * @return array{0: class-string, 1: object, 2: string}|null Controller class name, controller instance, action method name.
+     */
+    private function reflectControllerAction(Route $route): ?array
+    {
+        $controller = $route->getController();
+
+        if (! is_object($controller)) {
+            return null;
+        }
+
+        return [get_class($controller), $controller, $route->getActionMethod()];
+    }
+
+    /**
      * Whether a route with no controller (a Closure route, or a Minimal-
      * API-style callable route) should be treated as version-neutral.
      */
     private function closureRoutesAreNeutral(): bool
     {
-        /** @var string $mode */
+        /** @var mixed $mode */
         $mode = config('api-versioning.closure_routes', 'neutral');
 
         return $mode !== 'reject';
@@ -244,12 +251,13 @@ class AttributeVersionResolver
     /**
      * @param  string[]|null  $routeVersions
      * @param  array<string, array{sunset: string|null, replacedBy: string|null}>  $perVersionDeprecation
-     *                                                                                                     Versions explicitly marked deprecated on the #[ApiVersion]/#[MapToApiVersion]
-     *                                                                                                     attribute that declared them. A non-empty array here means per-version
-     *                                                                                                     deprecation is in use for this route, which takes precedence over the
-     *                                                                                                     coarse-grained #[Deprecated] attribute for deciding *which* versions are
-     *                                                                                                     deprecated (though #[Deprecated]'s message/sunset/replacedBy are still used
-     *                                                                                                     to fill in anything the attribute itself didn't specify).
+     *         Versions explicitly marked deprecated on the #[ApiVersion]/#[MapToApiVersion]
+     *         attribute that declared them. A non-empty array here means per-version
+     *         deprecation is in use for this route, which takes precedence over the
+     *         coarse-grained #[Deprecated] attribute for deciding *which* versions are
+     *         deprecated (though #[Deprecated]'s message/sunset/replacedBy are still used
+     *         to fill in anything the attribute itself didn't specify).
+     * @param  ReflectionClass<object>|null  $class
      */
     private function createVersionInfo(
         string $version,
@@ -296,6 +304,9 @@ class AttributeVersionResolver
         );
     }
 
+    /**
+     * @param  ReflectionClass<object>|ReflectionMethod|null  $reflection
+     */
     private function getDeprecationInfo(ReflectionClass|ReflectionMethod|null $reflection): ?Deprecated
     {
         if ($reflection === null) {
@@ -308,10 +319,31 @@ class AttributeVersionResolver
     }
 
     /**
+     * The #[ApiVersion]/#[MapToApiVersion] attributes on a reflector: the
+     * two attribute types that declare versions this route *implements*.
+     * Deliberately explicit (rather than filtering by the shared
+     * HasVersions interface) so that #[AdvertiseApiVersions] -- which also
+     * implements HasVersions, for typing purposes -- is never swept into
+     * the "implemented" set.
+     *
+     * @param  ReflectionClass<object>|ReflectionMethod  $reflector
+     * @return list<ReflectionAttribute<HasVersions>>
+     */
+    private function implementedVersionAttributes(ReflectionClass|ReflectionMethod $reflector): array
+    {
+        return [
+            ...$reflector->getAttributes(ApiVersion::class),
+            ...$reflector->getAttributes(MapToApiVersion::class),
+        ];
+    }
+
+    /**
      * Collect #[AdvertiseApiVersions] metadata from both the method and the
      * class (unioned, not method-overrides-class like implemented versions
      * — advertised versions are supplementary discovery metadata, not
      * mutually exclusive alternatives to resolve a request against).
+     *
+     * @param  ReflectionClass<object>  $class
      */
     private function collectAdvertisedMetadata(ReflectionMethod $method, ReflectionClass $class): VersionAttributeMetadata
     {
@@ -329,7 +361,7 @@ class AttributeVersionResolver
      * attribute instances, along with a map of any versions individually
      * marked deprecated on the attribute that declared them.
      *
-     * @param  ReflectionAttribute[]  $attributes
+     * @param  list<ReflectionAttribute<HasVersions>>  $attributes
      */
     private function collectVersionMetadata(array $attributes): VersionAttributeMetadata
     {
@@ -342,7 +374,6 @@ class AttributeVersionResolver
 
         foreach ($attributes as $attribute) {
             $instance = $attribute->newInstance();
-            /** @var string[] $instanceVersions */
             $instanceVersions = $instance->getVersions();
             $versions = array_merge($versions, $instanceVersions);
 

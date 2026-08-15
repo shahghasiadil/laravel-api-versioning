@@ -9,6 +9,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Support\ServiceProvider;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiCacheClearCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionConfigCommand;
@@ -18,6 +19,8 @@ use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\MakeVersionedControllerC
 use ShahGhasiAdil\LaravelApiVersioning\Conventions\ConventionRegistry;
 use ShahGhasiAdil\LaravelApiVersioning\Http\RequestMacros;
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
+use ShahGhasiAdil\LaravelApiVersioning\Routing\ApiVersionRouteConstraint;
+use ShahGhasiAdil\LaravelApiVersioning\Routing\ApiVersionRouteGroup;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\SunsetPolicyManager;
@@ -136,6 +139,17 @@ class ApiVersioningServiceProvider extends ServiceProvider
         /** @var Router $router */
         $router = $this->app->make('router');
         $router->aliasMiddleware('api.version', AttributeApiVersionMiddleware::class);
+        $router->pattern('version', ApiVersionRouteConstraint::PATTERN);
+
+        /**
+         * @param  string|string[]  $versions
+         */
+        RouteFacade::macro('apiVersion', function (string|array $versions) use ($router): ApiVersionRouteGroup {
+            /** @var string[] $versionList */
+            $versionList = is_array($versions) ? array_values($versions) : [$versions];
+
+            return new ApiVersionRouteGroup($router, $versionList);
+        });
 
         RequestMacros::register();
 

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\ValueObjects;
 
+use ShahGhasiAdil\LaravelApiVersioning\OpenApi\ApiVersionDescriptionProvider;
+
 /**
  * Everything a documentation generator (or `api:versions --json`) needs to
  * know about a single API version: whether it's deprecated, when it
  * sunsets, and which routes serve it. Produced by
- * {@see \ShahGhasiAdil\LaravelApiVersioning\OpenApi\ApiVersionDescriptionProvider}.
+ * {@see ApiVersionDescriptionProvider}.
  */
 final class ApiVersionDescription
 {

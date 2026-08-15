@@ -2,9 +2,9 @@
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\OpenApi\ApiVersionDescriptionProvider;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\ApiVersionDescription;
 
 #[ApiVersion('1.0', deprecated: true, sunset: '2026-06-30', replacedBy: '2.0')]
@@ -59,7 +59,7 @@ test('descriptions are sorted by version', function () {
 
     // Not asserting exact sort algorithm here, just that it's some
     // consistent, non-arbitrary order (ascending by version).
-    expect($versions)->toBe((new \ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator)->sort($versions));
+    expect($versions)->toBe((new VersionComparator)->sort($versions));
 });
 
 test('toArray() produces a plain, serializable structure', function () {

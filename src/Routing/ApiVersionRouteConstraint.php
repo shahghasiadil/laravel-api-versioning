@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Routing;
 
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\UrlSegmentApiVersionReader;
+
 /**
  * A route parameter constraint for a `{version}` URL segment, so one route
  * template can serve every version a controller declares instead of
@@ -23,7 +25,7 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Routing;
 final class ApiVersionRouteConstraint
 {
     /**
-     * Matches the same version shapes {@see \ShahGhasiAdil\LaravelApiVersioning\Services\VersionReaders\UrlSegmentApiVersionReader}
+     * Matches the same version shapes {@see UrlSegmentApiVersionReader}
      * extracts from a path: `1`, `1.0`, `2.1.0`, `1.0-beta`.
      */
     public const string PATTERN = '\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?';

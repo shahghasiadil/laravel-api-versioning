@@ -14,6 +14,9 @@ use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
  */
 class ProblemDetailsResponse extends JsonResponse
 {
+    /**
+     * @param  array<string, mixed>  $extensions
+     */
     public function __construct(
         string $title,
         string $detail,
@@ -45,6 +48,10 @@ class ProblemDetailsResponse extends JsonResponse
 
     /**
      * Create a problem details response for unsupported API version
+     */
+    /**
+     * @param  string[]  $supportedVersions
+     * @param  string[]  $endpointVersions
      */
     public static function unsupportedVersion(
         string $requestedVersion,

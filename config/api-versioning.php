@@ -234,4 +234,22 @@ return [
         'enabled' => env('API_VERSIONING_CACHE_ENABLED', true),
         'ttl' => env('API_VERSIONING_CACHE_TTL', 3600), // seconds
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate On Boot
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, a handful of cheap configuration checks (default
+    | version present in supported_versions, no cycle in
+    | version_inheritance) run once during application boot and log a
+    | warning if they fail -- catching a broken config before the first
+    | request hits it, instead of only via 'api:version:health'.
+    |
+    | Defaults to APP_DEBUG so it's on in local/testing and off in
+    | production, where it's skipped entirely regardless of this setting
+    | to avoid adding any boot-time cost to production requests.
+    |
+    */
+    'validate_on_boot' => env('API_VERSIONING_VALIDATE_ON_BOOT', env('APP_DEBUG', false)),
 ];

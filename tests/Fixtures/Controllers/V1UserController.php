@@ -1,6 +1,6 @@
 <?php
 
-namespace ShahGhasiAdil\LaravelApiVersioning\Examples;
+namespace ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;

@@ -9,9 +9,9 @@ use ShahGhasiAdil\LaravelApiVersioning\Attributes\AdvertiseApiVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\Events\ApiVersionResolved;
 use ShahGhasiAdil\LaravelApiVersioning\Events\DeprecatedApiVersionUsed;
-use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
-use ShahGhasiAdil\LaravelApiVersioning\Examples\V1UserController;
-use ShahGhasiAdil\LaravelApiVersioning\Examples\V2UserController;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\SharedController;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\V1UserController;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\V2UserController;
 
 #[ApiVersion('2.0')]
 #[AdvertiseApiVersions('2.1')]

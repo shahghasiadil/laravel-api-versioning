@@ -15,9 +15,15 @@ class ApiCacheClearCommand extends Command
 
     public function handle(AttributeCacheService $cache): int
     {
+        $usedTagging = $cache->supportsTagging();
+
         $cache->flush();
 
-        $this->components->info('API versioning cache cleared successfully.');
+        if ($usedTagging) {
+            $this->components->info('API versioning cache cleared successfully (tag-based flush).');
+        } else {
+            $this->components->info('API versioning cache cleared successfully (indexed-key flush; the active cache driver does not support tags).');
+        }
 
         return self::SUCCESS;
     }

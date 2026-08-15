@@ -171,6 +171,38 @@ describe('media type version extraction', function () {
 
         expect($version)->toBe('2.0'); // Falls back to default
     });
+
+    test('extracts a quoted parameter value', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set('Accept', 'application/vnd.api+json;version="2.1"');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.1');
+    });
+
+    test('falls back to Content-Type when Accept has no version', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set('Accept', 'application/json');
+        $request->headers->set('Content-Type', 'application/vnd.api+json;version=1.1');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('1.1');
+    });
+
+    test('prefers a higher q-value entry over one listed first', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set(
+            'Accept',
+            'application/vnd.api+json;version=1.0;q=0.5, application/vnd.api+json;version=2.0;q=0.9'
+        );
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.0');
+    });
+
+    test('respects parameter order and unrelated parameters', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set('Accept', 'application/vnd.api+json; charset=utf-8; version=2.0');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.0');
+    });
 });
 
 describe('version validation', function () {

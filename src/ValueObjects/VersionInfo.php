@@ -18,7 +18,7 @@ class VersionInfo
     ) {}
 
     /**
-     * @return array{version: string, is_neutral: bool, is_deprecated: bool, deprecation_message: string|null, sunset_date: string|null, replaced_by: string|null}
+     * @return array{version: string, is_neutral: bool, is_deprecated: bool, deprecation_message: string|null, sunset_date: string|null, replaced_by: string|null, route_versions: string[]|null}
      */
     public function toArray(): array
     {
@@ -29,6 +29,7 @@ class VersionInfo
             'deprecation_message' => $this->deprecationMessage,
             'sunset_date' => $this->sunsetDate,
             'replaced_by' => $this->replacedBy,
+            'route_versions' => $this->routeVersions,
         ];
     }
 }

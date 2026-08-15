@@ -126,4 +126,35 @@ class VersionConfigService
 
         return $defaultMethod;
     }
+
+    /**
+     * Detect a cycle in 'version_inheritance' by walking each declared
+     * version's chain with a visited-set guard.
+     *
+     * @return string[]|null The cyclic path (for display), or null when acyclic.
+     */
+    public function findInheritanceCycle(): ?array
+    {
+        $inheritance = $this->getVersionInheritance();
+
+        foreach (array_keys($inheritance) as $start) {
+            $path = [$start];
+            $current = $start;
+
+            while (isset($inheritance[$current])) {
+                $current = $inheritance[$current];
+                $path[] = $current;
+
+                if ($current === $start) {
+                    return $path;
+                }
+
+                if (count($path) > count($inheritance) + 1) {
+                    break;
+                }
+            }
+        }
+
+        return null;
+    }
 }

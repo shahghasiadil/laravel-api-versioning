@@ -72,6 +72,40 @@ class ApiVersioningServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Cheap, opt-in ('validate_on_boot') sanity checks that catch a broken
+     * config before the first request hits it. Never runs in production,
+     * regardless of the config value, so this never adds boot-time cost to
+     * a production deployment.
+     */
+    private function validateOnBoot(): void
+    {
+        if ($this->app->environment('production')) {
+            return;
+        }
+
+        /** @var mixed $enabled */
+        $enabled = config('api-versioning.validate_on_boot', false);
+        if (! $enabled) {
+            return;
+        }
+
+        /** @var VersionManager $versionManager */
+        $versionManager = $this->app->make(VersionManager::class);
+        /** @var VersionConfigService $configService */
+        $configService = $this->app->make(VersionConfigService::class);
+
+        $default = $versionManager->getDefaultVersion();
+        if (! in_array($default, $versionManager->getSupportedVersions(), true)) {
+            logger()->warning("[laravel-api-versioning] default_version '{$default}' is not in supported_versions.");
+        }
+
+        $cycle = $configService->findInheritanceCycle();
+        if ($cycle !== null) {
+            logger()->warning('[laravel-api-versioning] version_inheritance contains a cycle: '.implode(' -> ', $cycle));
+        }
+    }
+
     public function boot(): void
     {
         $this->publishes([
@@ -84,6 +118,9 @@ class ApiVersioningServiceProvider extends ServiceProvider
 
         RequestMacros::register();
 
+        $this->bootOctaneMemoryCacheReset();
+        $this->validateOnBoot();
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ApiVersionsCommand::class,
@@ -93,5 +130,35 @@ class ApiVersioningServiceProvider extends ServiceProvider
                 MakeVersionedControllerCommand::class,
             ]);
         }
+    }
+
+    /**
+     * Under Octane, workers persist across requests, so
+     * {@see AttributeVersionResolver}'s static in-process memory cache
+     * would otherwise survive from one request to the next and never see
+     * a mid-process config or attribute change. Reset it on both request
+     * boundaries when Octane is installed; a no-op otherwise.
+     */
+    private function bootOctaneMemoryCacheReset(): void
+    {
+        // Referenced by string, not ::class: laravel/octane is an optional
+        // peer, not a dependency of this package, so its classes don't
+        // exist (and shouldn't be required to exist) outside an Octane
+        // deployment or static analysis.
+        $requestReceived = 'Laravel\Octane\Events\RequestReceived';
+        $requestTerminated = 'Laravel\Octane\Events\RequestTerminated';
+
+        if (! class_exists($requestReceived)) {
+            return;
+        }
+
+        /** @var \Illuminate\Contracts\Events\Dispatcher $events */
+        $events = $this->app->make('events');
+        $reset = static function (): void {
+            AttributeVersionResolver::resetMemoryCache();
+        };
+
+        $events->listen($requestReceived, $reset);
+        $events->listen($requestTerminated, $reset);
     }
 }

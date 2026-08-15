@@ -93,6 +93,7 @@ describe('toArray conversion', function () {
             'deprecation_message' => 'Please migrate to v3.0',
             'sunset_date' => '2025-12-31',
             'replaced_by' => '3.0',
+            'route_versions' => null,
         ]);
     });
 
@@ -108,6 +109,7 @@ describe('toArray conversion', function () {
             'deprecation_message' => null,
             'sunset_date' => null,
             'replaced_by' => null,
+            'route_versions' => null,
         ]);
     });
 

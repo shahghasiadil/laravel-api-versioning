@@ -69,6 +69,8 @@ class VersionComparator
 
     /**
      * Get the highest version from an array of versions
+     *
+     * @param  string[]  $versions
      */
     public function getHighest(array $versions): ?string
     {
@@ -83,6 +85,8 @@ class VersionComparator
 
     /**
      * Get the lowest version from an array of versions
+     *
+     * @param  string[]  $versions
      */
     public function getLowest(array $versions): ?string
     {
@@ -98,6 +102,7 @@ class VersionComparator
     /**
      * Sort versions in ascending order
      *
+     * @param  string[]  $versions
      * @return string[]
      */
     public function sort(array $versions, bool $descending = false): array

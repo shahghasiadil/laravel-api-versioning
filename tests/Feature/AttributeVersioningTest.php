@@ -1,9 +1,23 @@
 <?php
 
+use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controller;
 use Illuminate\Testing\TestResponse;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\AdvertiseApiVersions;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\SharedController;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\V1UserController;
 use ShahGhasiAdil\LaravelApiVersioning\Examples\V2UserController;
+
+#[ApiVersion('2.0')]
+#[AdvertiseApiVersions('2.1')]
+class OrdersFeatureTestController extends Controller
+{
+    public function index(): JsonResponse
+    {
+        return response()->json(['ok' => true]);
+    }
+}
 
 beforeEach(function () {
     // Set up routes for testing
@@ -22,6 +36,9 @@ beforeEach(function () {
 
         // Closure route (no controller to carry attributes)
         $this->app['router']->get('ping', fn () => response()->json(['pong' => true]));
+
+        // Advertises a version it doesn't implement
+        $this->app['router']->get('orders', [OrdersFeatureTestController::class, 'index']);
     });
 });
 
@@ -153,6 +170,19 @@ test('closure_routes=reject restores the original 400 behavior', function () {
 
     $response->assertStatus(400)
         ->assertJson(['title' => 'Unsupported API Version']);
+});
+
+test('an advertised version is discoverable but not resolvable on the advertising route', function () {
+    $response = getWithVersion('/api/orders', '2.0');
+    $response->assertStatus(200)
+        ->assertHeader('api-supported-versions', '2.0, 2.1');
+
+    $response = getWithVersion('/api/orders', '2.1');
+    $response->assertStatus(400)
+        ->assertJson([
+            'title' => 'Unsupported API Version',
+            'endpoint_versions' => ['2.0', '2.1'],
+        ]);
 });
 
 test('format_validation.enabled returns an Invalid problem for a malformed version', function () {

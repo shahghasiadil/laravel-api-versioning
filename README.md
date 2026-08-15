@@ -112,6 +112,7 @@ curl -H "Accept: application/vnd.api+json;version=2.0" https://api.example.com/a
 ## Features
 
 - Controller and method level attributes (`ApiVersion`, `MapToApiVersion`)
+- Per-version deprecation, and advertising versions implemented elsewhere (`AdvertiseApiVersions`)
 - Version-neutral endpoints (`ApiVersionNeutral`)
 - Deprecation metadata (`Deprecated` with message, sunset date, replacement)
 - Multiple version detection methods (header, query, path, media type)
@@ -191,6 +192,28 @@ Add deprecation metadata to controller/method.
     replacedBy: '2.0'
 )]
 ```
+
+### `AdvertiseApiVersions`
+
+Declares that a version exists and is implemented *elsewhere* — another
+service, another package, a gateway route — rather than by this
+controller/method. Unlike `#[ApiVersion]`, an advertised version is never
+resolved by the endpoint that declares it; it only appears in discovery
+data (`api-supported-versions`, `X-API-Route-Versions`, `getAllVersionsForRoute()`,
+the `api:versions` command) so clients and API explorers know it exists.
+
+```php
+#[ApiVersion('2.0')]
+#[AdvertiseApiVersions('3.0')]           // implemented by a different service
+class OrderController extends Controller
+{
+    // requests for 2.0 are handled here; requests for 3.0 still 400,
+    // but every response's headers list 3.0 as a version this API has.
+}
+```
+
+Accepts the same `deprecated`, `sunset`, and `replacedBy` parameters as
+`#[ApiVersion]`, so an advertised version can also report as deprecated.
 
 ## Response Headers
 

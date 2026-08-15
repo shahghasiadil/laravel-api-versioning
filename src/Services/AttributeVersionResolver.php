@@ -8,6 +8,7 @@ use Illuminate\Routing\Route;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\AdvertiseApiVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecation;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
@@ -79,12 +80,14 @@ class AttributeVersionResolver
             $methodMetadata = $this->collectVersionMetadata($methodVersionAttrs);
 
             if ($methodMetadata->versions !== [] && in_array($requestedVersion, $methodMetadata->versions, true)) {
+                $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
+
                 return $this->createVersionInfo(
                     $requestedVersion,
                     false,
                     $reflectionMethod,
                     $reflectionClass,
-                    routeVersions: $methodMetadata->versions,
+                    routeVersions: array_values(array_unique([...$methodMetadata->versions, ...$advertised])),
                     perVersionDeprecation: $methodMetadata->deprecated,
                 );
             }
@@ -95,12 +98,14 @@ class AttributeVersionResolver
                 $classMetadata = $this->collectVersionMetadata($classVersionAttrs);
 
                 if ($classMetadata->versions !== [] && in_array($requestedVersion, $classMetadata->versions, true)) {
+                    $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
+
                     return $this->createVersionInfo(
                         $requestedVersion,
                         false,
                         $reflectionMethod,
                         $reflectionClass,
-                        routeVersions: $classMetadata->versions,
+                        routeVersions: array_values(array_unique([...$classMetadata->versions, ...$advertised])),
                         perVersionDeprecation: $classMetadata->deprecated,
                     );
                 }
@@ -143,14 +148,19 @@ class AttributeVersionResolver
             $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
             $methodVersions = $this->collectVersionMetadata($methodVersionAttrs)->versions;
 
-            if ($methodVersions !== []) {
-                return $methodVersions;
+            $implemented = $methodVersions;
+            if ($implemented === []) {
+                // Fall back to class-level
+                $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
+                $implemented = $this->collectVersionMetadata($classVersionAttrs)->versions;
             }
 
-            // Fall back to class-level
-            $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
+            // #[AdvertiseApiVersions] declares versions implemented elsewhere;
+            // they're never resolvable on this route, but still belong in
+            // discovery data (headers, the api:versions command).
+            $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
 
-            return $this->collectVersionMetadata($classVersionAttrs)->versions;
+            return array_values(array_unique([...$implemented, ...$advertised]));
         });
 
         return $result;
@@ -194,14 +204,18 @@ class AttributeVersionResolver
                 : $this->collectVersionMetadata($reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF));
 
             if ($metadata->deprecated !== []) {
-                return array_keys($metadata->deprecated);
+                $deprecatedImplemented = array_keys($metadata->deprecated);
+            } else {
+                // No per-version deprecation declared: fall back to the coarse
+                // #[Deprecated] attribute, which deprecates every version.
+                $coarseDeprecated = $this->getDeprecationInfo($reflectionMethod) ?? $this->getDeprecationInfo($reflectionClass);
+                $deprecatedImplemented = $coarseDeprecated !== null ? $metadata->versions : [];
             }
 
-            // No per-version deprecation declared: fall back to the coarse
-            // #[Deprecated] attribute, which deprecates every version.
-            $coarseDeprecated = $this->getDeprecationInfo($reflectionMethod) ?? $this->getDeprecationInfo($reflectionClass);
+            $advertisedMetadata = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass);
+            $deprecatedAdvertised = array_keys($advertisedMetadata->deprecated);
 
-            return $coarseDeprecated !== null ? $metadata->versions : [];
+            return array_values(array_unique([...$deprecatedImplemented, ...$deprecatedAdvertised]));
         });
 
         return $result;
@@ -291,6 +305,23 @@ class AttributeVersionResolver
         $attributes = $reflection->getAttributes(Deprecated::class);
 
         return $attributes !== [] ? $attributes[0]->newInstance() : null;
+    }
+
+    /**
+     * Collect #[AdvertiseApiVersions] metadata from both the method and the
+     * class (unioned, not method-overrides-class like implemented versions
+     * — advertised versions are supplementary discovery metadata, not
+     * mutually exclusive alternatives to resolve a request against).
+     */
+    private function collectAdvertisedMetadata(ReflectionMethod $method, ReflectionClass $class): VersionAttributeMetadata
+    {
+        $methodMetadata = $this->collectVersionMetadata($method->getAttributes(AdvertiseApiVersions::class));
+        $classMetadata = $this->collectVersionMetadata($class->getAttributes(AdvertiseApiVersions::class));
+
+        return new VersionAttributeMetadata(
+            array_values(array_unique([...$classMetadata->versions, ...$methodMetadata->versions])),
+            array_merge($classMetadata->deprecated, $methodMetadata->deprecated),
+        );
     }
 
     /**

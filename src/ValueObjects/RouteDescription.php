@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\ValueObjects;
 
+use ShahGhasiAdil\LaravelApiVersioning\OpenApi\ApiVersionDescriptionProvider;
+
 /**
  * A single route that serves a given API version, as reported by
- * {@see \ShahGhasiAdil\LaravelApiVersioning\OpenApi\ApiVersionDescriptionProvider}.
+ * {@see ApiVersionDescriptionProvider}.
  */
 final class RouteDescription
 {

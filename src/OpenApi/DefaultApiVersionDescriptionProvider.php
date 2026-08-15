@@ -6,6 +6,7 @@ namespace ShahGhasiAdil\LaravelApiVersioning\OpenApi;
 
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
+use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionsCommand;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\SunsetPolicyManager;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator;
@@ -16,7 +17,7 @@ use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\SunsetPolicy;
 
 /**
  * Builds {@see ApiVersionDescription}s from the same attribute-resolution
- * machinery {@see \ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionsCommand}
+ * machinery {@see ApiVersionsCommand}
  * uses ({@see AttributeVersionResolver}), so the two never disagree about
  * what a version is or which routes serve it.
  */
@@ -109,7 +110,7 @@ class DefaultApiVersionDescriptionProvider implements ApiVersionDescriptionProvi
 
     /**
      * The same configured-path-prefix derivation
-     * {@see \ShahGhasiAdil\LaravelApiVersioning\Console\Commands\ApiVersionsCommand}
+     * {@see ApiVersionsCommand}
      * uses, so `describe()` and `api:versions` agree on which routes count.
      */
     private function configuredPathBase(): string

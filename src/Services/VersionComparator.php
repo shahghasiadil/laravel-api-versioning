@@ -135,12 +135,17 @@ class VersionComparator
         if (str_starts_with($constraint, '~')) {
             $baseVersion = ltrim($constraint, '~');
             $parts = explode('.', $baseVersion);
-            $majorVersion = $parts[0] ?? '0';
-            $minorVersion = $parts[1] ?? '0';
-            $nextMinor = $majorVersion.'.'.((int) $minorVersion + 1);
+            $majorVersion = (int) ($parts[0] ?? '0');
+
+            // Only a major version was given (e.g. "~2"): allow any minor/patch
+            // within that major, i.e. >=2 <3. Otherwise (e.g. "~2.1"): allow
+            // any patch within that minor, i.e. >=2.1 <2.2.
+            $upperBound = count($parts) < 2
+                ? ($majorVersion + 1).'.0'
+                : $majorVersion.'.'.((int) $parts[1] + 1);
 
             return $this->isGreaterThanOrEqual($version, $baseVersion)
-                && $this->isLessThan($version, $nextMinor);
+                && $this->isLessThan($version, $upperBound);
         }
 
         // Handle comparison operators

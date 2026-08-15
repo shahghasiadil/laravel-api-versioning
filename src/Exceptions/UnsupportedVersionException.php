@@ -7,6 +7,7 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Exceptions;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use ShahGhasiAdil\LaravelApiVersioning\Http\Responses\ProblemDetailsResponse;
 use Throwable;
 
 class UnsupportedVersionException extends Exception
@@ -24,23 +25,19 @@ class UnsupportedVersionException extends Exception
         parent::__construct($message, $code, $previous);
     }
 
+    /**
+     * Render the exception as the same RFC 7807 problem-details response the
+     * versioning middleware produces, so the response shape is identical
+     * whether the client is caught by the middleware or bubbles up here.
+     */
     public function render(Request $request): JsonResponse
     {
-        $data = [
-            'error' => 'Unsupported API Version',
-            'message' => $this->getMessage(),
-            'supported_versions' => $this->supportedVersions,
-        ];
-
-        if ($this->requestedVersion !== null) {
-            $data['requested_version'] = $this->requestedVersion;
-        }
-
         $documentationUrl = config('api-versioning.documentation.base_url');
-        if (is_string($documentationUrl) && $documentationUrl !== '') {
-            $data['documentation'] = $documentationUrl;
-        }
 
-        return response()->json($data, 400);
+        return ProblemDetailsResponse::unsupportedVersion(
+            requestedVersion: $this->requestedVersion ?? 'unknown',
+            supportedVersions: $this->supportedVersions,
+            documentationUrl: is_string($documentationUrl) && $documentationUrl !== '' ? $documentationUrl : null
+        );
     }
 }

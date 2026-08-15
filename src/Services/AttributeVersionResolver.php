@@ -34,7 +34,19 @@ class AttributeVersionResolver
         $action = $route->getActionMethod();
 
         if ($controller === null) {
-            return null;
+            // Closure routes have no class/method to carry attributes, so
+            // there is nothing to resolve against. By default they are
+            // treated as version-neutral (respond to every supported
+            // version), matching #[ApiVersionNeutral]; set
+            // 'closure_routes' => 'reject' to restore the original
+            // behavior of rejecting every version on closure routes.
+            return $this->closureRoutesAreNeutral()
+                ? $this->createVersionInfo(
+                    $requestedVersion,
+                    true,
+                    routeVersions: $this->versionManager->getSupportedVersions()
+                )
+                : null;
         }
 
         $controllerClass = get_class($controller);
@@ -111,7 +123,7 @@ class AttributeVersionResolver
         $action = $route->getActionMethod();
 
         if ($controller === null) {
-            return [];
+            return $this->closureRoutesAreNeutral() ? $this->versionManager->getSupportedVersions() : [];
         }
 
         $controllerClass = get_class($controller);
@@ -201,6 +213,18 @@ class AttributeVersionResolver
     public static function resetMemoryCache(): void
     {
         self::$memoryCache = [];
+    }
+
+    /**
+     * Whether a route with no controller (a Closure route, or a Minimal-
+     * API-style callable route) should be treated as version-neutral.
+     */
+    private function closureRoutesAreNeutral(): bool
+    {
+        /** @var string $mode */
+        $mode = config('api-versioning.closure_routes', 'neutral');
+
+        return $mode !== 'reject';
     }
 
     /**

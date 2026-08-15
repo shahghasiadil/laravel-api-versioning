@@ -431,6 +431,19 @@ return [
         ],
     ],
 
+    // See "Detection strictness" above. All disabled by default.
+    'version_detection' => [
+        'require_explicit_version' => false,
+        'reject_conflicting_versions' => false,
+        'format_validation' => [
+            'enabled' => false,
+            'pattern' => '/^\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?$/',
+        ],
+    ],
+
+    // 'neutral' (default) or 'reject'. See "Closure Routes" below.
+    'closure_routes' => 'neutral',
+
     'supported_versions' => ['1.0', '1.1', '2.0', '2.1'],
 
     'version_method_mapping' => [
@@ -447,6 +460,12 @@ return [
 
     'default_method' => 'toArrayDefault',
 
+    // See "Response Headers" above. Both default to true.
+    'reporting' => [
+        'standard_headers' => true,
+        'legacy_headers' => true,
+    ],
+
     'documentation' => [
         'base_url' => env('API_DOCUMENTATION_URL'),
     ],
@@ -457,6 +476,21 @@ return [
     ],
 ];
 ```
+
+### Closure Routes
+
+Routes defined with a `Closure` have no controller class to carry
+`#[ApiVersion]`/`#[Deprecated]` attributes on. By default (`'closure_routes'
+=> 'neutral'`) they behave like `#[ApiVersionNeutral]` and respond to every
+version in `supported_versions`:
+
+```php
+Route::middleware('api.version')->get('/api/ping', fn () => response()->json(['pong' => true]));
+```
+
+Set `'closure_routes' => 'reject'` to restore this package's original
+behavior of returning a 400 "Unsupported API Version" for every request to
+a closure route.
 
 Environment variables:
 

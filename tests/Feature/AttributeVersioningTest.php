@@ -19,6 +19,9 @@ beforeEach(function () {
         // Shared/neutral routes
         $this->app['router']->get('health', [SharedController::class, 'health']);
         $this->app['router']->get('info', [SharedController::class, 'info']);
+
+        // Closure route (no controller to carry attributes)
+        $this->app['router']->get('ping', fn () => response()->json(['pong' => true]));
     });
 });
 
@@ -133,6 +136,23 @@ test('reject_conflicting_versions returns an Ambiguous problem when detection me
             'code' => 'AmbiguousApiVersion',
             'conflicts' => ['header' => '1.0', 'query' => '2.0'],
         ]);
+});
+
+test('closure routes are version-neutral by default', function () {
+    $response = getWithVersion('/api/ping', '1.0');
+    $response->assertStatus(200)->assertJson(['pong' => true]);
+
+    $response = getWithVersion('/api/ping', '2.0');
+    $response->assertStatus(200)->assertJson(['pong' => true]);
+});
+
+test('closure_routes=reject restores the original 400 behavior', function () {
+    config(['api-versioning.closure_routes' => 'reject']);
+
+    $response = getWithVersion('/api/ping', '1.0');
+
+    $response->assertStatus(400)
+        ->assertJson(['title' => 'Unsupported API Version']);
 });
 
 test('format_validation.enabled returns an Invalid problem for a malformed version', function () {

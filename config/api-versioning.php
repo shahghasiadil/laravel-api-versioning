@@ -79,6 +79,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Closure Routes
+    |--------------------------------------------------------------------------
+    |
+    | Routes defined with a Closure (or any callable without a controller
+    | class) have no class/method to carry #[ApiVersion] or #[Deprecated]
+    | attributes on, so there is nothing for the resolver to check.
+    |
+    | 'neutral' (default) treats them like #[ApiVersionNeutral]: they
+    | respond to every version in 'supported_versions' below.
+    |
+    | 'reject' restores this package's original behavior of returning a
+    | 400 "Unsupported API Version" for every request to a closure route.
+    |
+    */
+    'closure_routes' => 'neutral',
+
+    /*
+    |--------------------------------------------------------------------------
     | Supported API Versions
     |--------------------------------------------------------------------------
     |

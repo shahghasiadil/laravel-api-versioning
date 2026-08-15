@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Http;
 
 use Illuminate\Http\Request;
+use ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 
 /**
@@ -12,7 +13,7 @@ use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
  * macros, so version info resolved by the versioning middleware is reachable
  * from anywhere a Request instance is available -- form requests, jobs,
  * resources, custom middleware -- not just controllers using
- * {@see \ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes}.
+ * {@see HasApiVersionAttributes}.
  */
 class RequestMacros
 {

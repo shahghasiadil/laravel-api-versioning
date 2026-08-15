@@ -9,6 +9,7 @@ use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecation;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
@@ -63,30 +64,32 @@ class AttributeVersionResolver
             // Single pass per reflector using IS_INSTANCEOF to fetch both
             // ApiVersion and MapToApiVersion in one getAttributes() call
             $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-            $methodVersions = $this->flattenVersionAttributes($methodVersionAttrs);
+            $methodMetadata = $this->collectVersionMetadata($methodVersionAttrs);
 
-            if ($methodVersions !== [] && in_array($requestedVersion, $methodVersions, true)) {
+            if ($methodMetadata->versions !== [] && in_array($requestedVersion, $methodMetadata->versions, true)) {
                 return $this->createVersionInfo(
                     $requestedVersion,
                     false,
                     $reflectionMethod,
                     $reflectionClass,
-                    routeVersions: $methodVersions
+                    routeVersions: $methodMetadata->versions,
+                    perVersionDeprecation: $methodMetadata->deprecated,
                 );
             }
 
             // Only look at class-level if method had no version attributes
-            if ($methodVersions === []) {
+            if ($methodMetadata->versions === []) {
                 $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-                $classVersions = $this->flattenVersionAttributes($classVersionAttrs);
+                $classMetadata = $this->collectVersionMetadata($classVersionAttrs);
 
-                if ($classVersions !== [] && in_array($requestedVersion, $classVersions, true)) {
+                if ($classMetadata->versions !== [] && in_array($requestedVersion, $classMetadata->versions, true)) {
                     return $this->createVersionInfo(
                         $requestedVersion,
                         false,
                         $reflectionMethod,
                         $reflectionClass,
-                        routeVersions: $classVersions
+                        routeVersions: $classMetadata->versions,
+                        perVersionDeprecation: $classMetadata->deprecated,
                     );
                 }
             }
@@ -126,7 +129,7 @@ class AttributeVersionResolver
 
             // Single pass: get all HasVersions attributes from method
             $methodVersionAttrs = $reflectionMethod->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
-            $methodVersions = $this->flattenVersionAttributes($methodVersionAttrs);
+            $methodVersions = $this->collectVersionMetadata($methodVersionAttrs)->versions;
 
             if ($methodVersions !== []) {
                 return $methodVersions;
@@ -135,7 +138,7 @@ class AttributeVersionResolver
             // Fall back to class-level
             $classVersionAttrs = $reflectionClass->getAttributes(HasVersions::class, ReflectionAttribute::IS_INSTANCEOF);
 
-            return $this->flattenVersionAttributes($classVersionAttrs);
+            return $this->collectVersionMetadata($classVersionAttrs)->versions;
         });
 
         return $result;
@@ -151,6 +154,13 @@ class AttributeVersionResolver
 
     /**
      * @param  string[]|null  $routeVersions
+     * @param  array<string, array{sunset: string|null, replacedBy: string|null}>  $perVersionDeprecation
+     *         Versions explicitly marked deprecated on the #[ApiVersion]/#[MapToApiVersion]
+     *         attribute that declared them. A non-empty array here means per-version
+     *         deprecation is in use for this route, which takes precedence over the
+     *         coarse-grained #[Deprecated] attribute for deciding *which* versions are
+     *         deprecated (though #[Deprecated]'s message/sunset/replacedBy are still used
+     *         to fill in anything the attribute itself didn't specify).
      */
     private function createVersionInfo(
         string $version,
@@ -158,22 +168,41 @@ class AttributeVersionResolver
         ?ReflectionMethod $method = null,
         ?ReflectionClass $class = null,
         ?array $routeVersions = null,
+        array $perVersionDeprecation = [],
     ): VersionInfo {
-        $deprecated = null;
+        $coarseDeprecated = null;
 
         if ($method !== null) {
-            $deprecated = $this->getDeprecationInfo($method) ?? $this->getDeprecationInfo($class);
+            $coarseDeprecated = $this->getDeprecationInfo($method) ?? $this->getDeprecationInfo($class);
         } elseif ($class !== null) {
-            $deprecated = $this->getDeprecationInfo($class);
+            $coarseDeprecated = $this->getDeprecationInfo($class);
+        }
+
+        if ($perVersionDeprecation !== []) {
+            // Per-version deprecation is in use for this route: only the versions
+            // explicitly marked deprecated on their declaring attribute are deprecated,
+            // regardless of a coarse #[Deprecated] attribute elsewhere on the class/method.
+            $versionOverride = $perVersionDeprecation[$version] ?? null;
+            $isDeprecated = $versionOverride !== null;
+
+            return new VersionInfo(
+                version: $version,
+                isNeutral: $isNeutral,
+                isDeprecated: $isDeprecated,
+                deprecationMessage: $isDeprecated ? $coarseDeprecated?->message : null,
+                sunsetDate: $isDeprecated ? ($versionOverride['sunset'] ?? $coarseDeprecated?->sunsetDate) : null,
+                replacedBy: $isDeprecated ? ($versionOverride['replacedBy'] ?? $coarseDeprecated?->replacedBy) : null,
+                routeVersions: $routeVersions,
+            );
         }
 
         return new VersionInfo(
             version: $version,
             isNeutral: $isNeutral,
-            isDeprecated: $deprecated !== null,
-            deprecationMessage: $deprecated?->message,
-            sunsetDate: $deprecated?->sunsetDate,
-            replacedBy: $deprecated?->replacedBy,
+            isDeprecated: $coarseDeprecated !== null,
+            deprecationMessage: $coarseDeprecated?->message,
+            sunsetDate: $coarseDeprecated?->sunsetDate,
+            replacedBy: $coarseDeprecated?->replacedBy,
             routeVersions: $routeVersions,
         );
     }
@@ -190,27 +219,40 @@ class AttributeVersionResolver
     }
 
     /**
-     * Flatten a list of ReflectionAttribute instances (all implementing HasVersions)
-     * into a unique, merged array of version strings.
+     * Collect the merged, deduplicated version list from a set of HasVersions
+     * attribute instances, along with a map of any versions individually
+     * marked deprecated on the attribute that declared them.
      *
      * @param  ReflectionAttribute[]  $attributes
-     * @return string[]
      */
-    private function flattenVersionAttributes(array $attributes): array
+    private function collectVersionMetadata(array $attributes): VersionAttributeMetadata
     {
         if ($attributes === []) {
-            return [];
+            return new VersionAttributeMetadata([], []);
         }
 
-        /** @var list<string[]> $versionArrays */
-        $versionArrays = array_map(
-            static fn ($attr) => $attr->newInstance()->getVersions(),
-            $attributes
+        $versions = [];
+        $deprecated = [];
+
+        foreach ($attributes as $attribute) {
+            $instance = $attribute->newInstance();
+            /** @var string[] $instanceVersions */
+            $instanceVersions = $instance->getVersions();
+            $versions = array_merge($versions, $instanceVersions);
+
+            if ($instance instanceof HasVersionDeprecation && $instance->isDeprecated()) {
+                foreach ($instanceVersions as $instanceVersion) {
+                    $deprecated[$instanceVersion] = [
+                        'sunset' => $instance->getSunsetDate(),
+                        'replacedBy' => $instance->getReplacedBy(),
+                    ];
+                }
+            }
+        }
+
+        return new VersionAttributeMetadata(
+            array_values(array_unique($versions)),
+            $deprecated,
         );
-
-        /** @var string[] $merged */
-        $merged = array_merge(...$versionArrays);
-
-        return array_values(array_unique($merged));
     }
 }

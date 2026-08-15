@@ -2,6 +2,7 @@
 
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecation;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\MapToApiVersion;
 
@@ -43,6 +44,29 @@ describe('ApiVersion attribute', function () {
         $attribute = new ApiVersion([1, 2, 3]);
 
         expect($attribute->versions)->toBe([1, 2, 3]);
+    });
+
+    test('defaults to not deprecated with no sunset or replacement', function () {
+        $attribute = new ApiVersion('1.0');
+
+        expect($attribute)->toBeInstanceOf(HasVersionDeprecation::class);
+        expect($attribute->isDeprecated())->toBeFalse();
+        expect($attribute->getSunsetDate())->toBeNull();
+        expect($attribute->getReplacedBy())->toBeNull();
+    });
+
+    test('can be marked deprecated with a sunset date and replacement', function () {
+        $attribute = new ApiVersion(
+            '1.0',
+            deprecated: true,
+            sunset: '2026-06-30',
+            replacedBy: '2.0'
+        );
+
+        expect($attribute->deprecated)->toBeTrue();
+        expect($attribute->isDeprecated())->toBeTrue();
+        expect($attribute->getSunsetDate())->toBe('2026-06-30');
+        expect($attribute->getReplacedBy())->toBe('2.0');
     });
 });
 
@@ -152,6 +176,26 @@ describe('MapToApiVersion attribute', function () {
         $attribute = new MapToApiVersion($versions);
 
         expect($attribute->versions)->toBe($versions);
+    });
+
+    test('defaults to not deprecated', function () {
+        $attribute = new MapToApiVersion('1.0');
+
+        expect($attribute)->toBeInstanceOf(HasVersionDeprecation::class);
+        expect($attribute->isDeprecated())->toBeFalse();
+    });
+
+    test('can be marked deprecated with a sunset date and replacement', function () {
+        $attribute = new MapToApiVersion(
+            '1.0',
+            deprecated: true,
+            sunset: '2026-06-30',
+            replacedBy: '2.0'
+        );
+
+        expect($attribute->isDeprecated())->toBeTrue();
+        expect($attribute->getSunsetDate())->toBe('2026-06-30');
+        expect($attribute->getReplacedBy())->toBe('2.0');
     });
 });
 

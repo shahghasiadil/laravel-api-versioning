@@ -135,12 +135,35 @@ Use on a controller or method.
 #[ApiVersion(['1.0', '1.1', '2.0'])]
 ```
 
+Stack multiple `#[ApiVersion(...)]` attributes to deprecate only *some* of the
+versions a single controller/method serves, instead of the whole endpoint.
+This is different from a class/method-level `#[Deprecated]` attribute, which
+applies to every version the endpoint serves:
+
+```php
+#[ApiVersion('1.0', deprecated: true, sunset: '2026-06-30', replacedBy: '2.0')]
+#[ApiVersion('2.0')]
+class OrderController extends Controller
+{
+    // requests for 1.0 get the deprecation headers; requests for 2.0 don't.
+}
+```
+
+Add a `#[Deprecated(message: '...')]` attribute alongside it to supply a
+human-readable deprecation message for the deprecated version(s) — the
+message applies only to versions marked `deprecated: true` on their own
+`#[ApiVersion]`/`#[MapToApiVersion]` attribute when at least one such
+attribute is used this way.
+
 ### `MapToApiVersion`
 
-Use on a method to map it to specific versions.
+Use on a method to map it to specific versions. Accepts the same
+`deprecated`, `sunset`, and `replacedBy` parameters as `#[ApiVersion]`.
 
 ```php
 #[MapToApiVersion(['2.0', '2.1'])]
+
+#[MapToApiVersion('1.0', deprecated: true, sunset: '2026-06-30', replacedBy: '2.0')]
 ```
 
 ### `ApiVersionNeutral`

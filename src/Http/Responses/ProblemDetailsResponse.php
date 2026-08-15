@@ -83,8 +83,8 @@ class ProblemDetailsResponse extends JsonResponse
      *
      * @param  string[]  $supportedVersions
      * @param  array<string, mixed>  $context  Reason-specific extra data. Currently only
-     *         'conflicts' (array<string, string>: detection method => detected value) is used,
-     *         for {@see VersionProblemReason::Ambiguous}.
+     *                                         'conflicts' (array<string, string>: detection method => detected value) is used,
+     *                                         for {@see VersionProblemReason::Ambiguous}.
      */
     public static function versionProblem(
         VersionProblemReason $reason,

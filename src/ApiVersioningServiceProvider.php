@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning;
 
 use Illuminate\Config\Repository;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
@@ -152,7 +153,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
             return;
         }
 
-        /** @var \Illuminate\Contracts\Events\Dispatcher $events */
+        /** @var Dispatcher $events */
         $events = $this->app->make('events');
         $reset = static function (): void {
             AttributeVersionResolver::resetMemoryCache();

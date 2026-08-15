@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Routing\Route;
-use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\SharedController;
-use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\V1UserController;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\SharedController;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\V1UserController;
 
 beforeEach(function () {
     $config = [

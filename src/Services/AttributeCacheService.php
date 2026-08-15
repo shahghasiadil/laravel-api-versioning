@@ -7,7 +7,6 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 use Closure;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Support\Facades\Cache;
-use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 
 class AttributeCacheService
 {

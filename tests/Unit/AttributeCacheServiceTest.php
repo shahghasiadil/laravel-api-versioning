@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Cache;
-use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
+use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
 
 afterEach(function () {
     AttributeVersionResolver::resetMemoryCache();

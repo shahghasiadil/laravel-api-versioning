@@ -22,6 +22,12 @@ parameters:
 			message: '#^Parameter \#1 \$iterator of function iterator_to_array expects iterable, Illuminate\\Routing\\RouteCollectionInterface given\.$#'
 			identifier: argument.type
 			count: 1
+			path: src/OpenApi/DefaultApiVersionDescriptionProvider.php
+
+		-
+			message: '#^Parameter \#1 \$iterator of function iterator_to_array expects iterable, Illuminate\\Routing\\RouteCollectionInterface given\.$#'
+			identifier: argument.type
+			count: 1
 			path: src/Console/Commands/ApiVersionsCommand.php
 
 		-

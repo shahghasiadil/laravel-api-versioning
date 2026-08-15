@@ -19,6 +19,8 @@ use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\MakeVersionedControllerC
 use ShahGhasiAdil\LaravelApiVersioning\Conventions\ConventionRegistry;
 use ShahGhasiAdil\LaravelApiVersioning\Http\RequestMacros;
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
+use ShahGhasiAdil\LaravelApiVersioning\OpenApi\ApiVersionDescriptionProvider;
+use ShahGhasiAdil\LaravelApiVersioning\OpenApi\DefaultApiVersionDescriptionProvider;
 use ShahGhasiAdil\LaravelApiVersioning\Routing\ApiVersionRouteConstraint;
 use ShahGhasiAdil\LaravelApiVersioning\Routing\ApiVersionRouteGroup;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
@@ -81,6 +83,21 @@ class ApiVersioningServiceProvider extends ServiceProvider
         $this->app->singleton(ConventionRegistry::class, function (Application $app): ConventionRegistry {
             return new ConventionRegistry;
         });
+
+        $this->app->singleton(DefaultApiVersionDescriptionProvider::class, function (Application $app): DefaultApiVersionDescriptionProvider {
+            /** @var Router $router */
+            $router = $app->make('router');
+
+            return new DefaultApiVersionDescriptionProvider(
+                $router,
+                $app->make(VersionManager::class),
+                $app->make(AttributeVersionResolver::class),
+                $app->make(SunsetPolicyManager::class),
+                $app->make(VersionComparator::class),
+            );
+        });
+
+        $this->app->bind(ApiVersionDescriptionProvider::class, DefaultApiVersionDescriptionProvider::class);
 
         // Registered (not resolved) here: VersionManager must stay lazily
         // resolved, so its config snapshot is taken at first real use, not

@@ -355,3 +355,96 @@ describe('standard vs legacy reporting header config', function () {
         expect($result->headers->get('X-API-Route-Versions'))->toBe('2.0');
     });
 });
+
+describe('RFC 8594 Sunset / RFC 8288 Link headers', function () {
+    beforeEach(function () {
+        $this->request = Request::create('/api/users');
+        $this->route = Mockery::mock(Route::class);
+        $this->request->setRouteResolver(fn () => $this->route);
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('1.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['1.0']);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn(['1.0']);
+    });
+
+    test('emits Sunset from the attribute-resolved sunset date, with no config policy needed', function () {
+        config(['api-versioning.sunset_policies' => []]);
+
+        $versionInfo = new VersionInfo(
+            version: '1.0',
+            isDeprecated: true,
+            sunsetDate: '2026-06-30'
+        );
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->get('Sunset'))->toBe('Tue, 30 Jun 2026 00:00:00 GMT');
+        expect($result->headers->has('Link'))->toBeFalse();
+    });
+
+    test('emits Sunset and Link from a config policy, overriding the attribute date', function () {
+        config(['api-versioning.sunset_policies' => [
+            '1.0' => [
+                'date' => '2027-01-01',
+                'link' => 'https://example.com/migrate',
+                'link_type' => 'text/html',
+            ],
+        ]]);
+
+        $versionInfo = new VersionInfo(
+            version: '1.0',
+            isDeprecated: true,
+            sunsetDate: '2026-06-30'
+        );
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->get('Sunset'))->toBe('Fri, 01 Jan 2027 00:00:00 GMT');
+        expect($result->headers->get('Link'))->toBe('<https://example.com/migrate>; rel="sunset"; type="text/html"');
+    });
+
+    test('a config policy can sunset a version with no #[Deprecated] attribute at all', function () {
+        config(['api-versioning.sunset_policies' => [
+            '1.0' => ['date' => '2027-01-01'],
+        ]]);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: false, sunsetDate: null);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->get('Sunset'))->toBe('Fri, 01 Jan 2027 00:00:00 GMT');
+    });
+
+    test('omits Sunset and Link when no policy is resolvable', function () {
+        config(['api-versioning.sunset_policies' => []]);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: false, sunsetDate: null);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('Sunset'))->toBeFalse();
+        expect($result->headers->has('Link'))->toBeFalse();
+    });
+
+    test('standard_headers=false omits Sunset and Link too', function () {
+        config([
+            'api-versioning.reporting.standard_headers' => false,
+            'api-versioning.sunset_policies' => ['1.0' => ['date' => '2027-01-01']],
+        ]);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: true, sunsetDate: '2026-06-30');
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('Sunset'))->toBeFalse();
+        expect($result->headers->has('Link'))->toBeFalse();
+        // The legacy header is unaffected by the sunset_policies feature.
+        expect($result->headers->get('X-API-Sunset'))->toBe('2026-06-30');
+    });
+});

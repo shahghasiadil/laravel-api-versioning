@@ -16,6 +16,7 @@ use ShahGhasiAdil\LaravelApiVersioning\Console\Commands\MakeVersionedControllerC
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
+use ShahGhasiAdil\LaravelApiVersioning\Services\SunsetPolicyManager;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionComparator;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionConfigService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
@@ -63,6 +64,10 @@ class ApiVersioningServiceProvider extends ServiceProvider
 
         $this->app->singleton(VersionComparator::class, function (Application $app): VersionComparator {
             return new VersionComparator;
+        });
+
+        $this->app->singleton(SunsetPolicyManager::class, function (Application $app): SunsetPolicyManager {
+            return new SunsetPolicyManager;
         });
     }
 

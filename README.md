@@ -246,6 +246,42 @@ report what *this endpoint* supports, while `X-API-Supported-Versions`
 reports your application's entire `supported_versions` config list.
 `X-API-Version` is always emitted regardless of these settings.
 
+### Sunset Policies (RFC 8594 / RFC 8288)
+
+When `reporting.standard_headers` is enabled, a deprecated version with a
+sunset date also gets a standards-compliant `Sunset` header — an HTTP-date,
+per [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594) — instead of the raw
+string in the legacy `X-API-Sunset` header:
+
+```http
+Sunset: Tue, 30 Jun 2026 23:59:59 GMT
+```
+
+This works with no config: any version deprecated via
+`#[Deprecated(sunsetDate: '...')]` or `#[ApiVersion(sunset: '...')]` gets it
+for free. To also attach an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288)
+`Link` header pointing to a migration guide, or to sunset a version without
+touching a controller, declare a policy in config:
+
+```php
+'sunset_policies' => [
+    '1.0' => [
+        'date' => '2026-06-30',
+        'link' => 'https://docs.example.com/migrating-to-v2',
+        'link_type' => 'text/html',
+        'link_title' => 'Migration guide',
+    ],
+],
+```
+
+```http
+Sunset: Tue, 30 Jun 2026 00:00:00 GMT
+Link: <https://docs.example.com/migrating-to-v2>; rel="sunset"; type="text/html"; title="Migration guide"
+```
+
+A config policy takes precedence over an attribute-resolved sunset date for
+the same version.
+
 ## Versioned Resources
 
 ### `VersionedJsonResource`

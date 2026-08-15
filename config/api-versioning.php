@@ -163,17 +163,49 @@ return [
     | and `api-deprecated-versions` headers, matching common REST API
     | versioning conventions (e.g. ASP.NET's API Versioning library). These
     | report the versions *this specific endpoint* serves, not your whole
-    | application's supported_versions list.
+    | application's supported_versions list. It also governs the RFC 8594
+    | `Sunset` and RFC 8288 `Link` headers described under "Sunset Policies"
+    | below.
     |
     | 'legacy_headers' keeps emitting this package's original `X-API-*`
     | headers (X-API-Supported-Versions, X-API-Route-Versions, X-API-
-    | Deprecated, etc.) for backward compatibility. Disable it once your
-    | clients have migrated to the standard headers above.
+    | Deprecated, X-API-Sunset, etc.) for backward compatibility. Disable it
+    | once your clients have migrated to the standard headers above.
     |
     */
     'reporting' => [
         'standard_headers' => true,
         'legacy_headers' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sunset Policies
+    |--------------------------------------------------------------------------
+    |
+    | Declare when a version will stop responding entirely, independent of
+    | (and in addition to) any #[Deprecated] attribute. When
+    | 'reporting.standard_headers' is enabled, a version with a resolvable
+    | policy gets an RFC 8594 `Sunset` header (an HTTP-date) and, if 'link'
+    | is set, an RFC 8288 `Link: <url>; rel="sunset"` header pointing to a
+    | migration guide or changelog.
+    |
+    | A version deprecated via #[Deprecated(sunsetDate: '...')] or
+    | #[ApiVersion(sunset: '...')] already gets a Sunset header for free,
+    | with no config needed; declare a policy here only to also attach a
+    | link, or to sunset a version without a code change.
+    |
+    | 'date' accepts anything PHP's DateTimeImmutable can parse (e.g.
+    | 'Y-m-d', 'Y-m-d\TH:i:sP', or a relative expression).
+    |
+    */
+    'sunset_policies' => [
+        // '1.0' => [
+        //     'date' => '2026-06-30',
+        //     'link' => 'https://docs.example.com/migrating-to-v2',
+        //     'link_type' => 'text/html',
+        //     'link_title' => 'Migration guide',
+        // ],
     ],
 
     /*

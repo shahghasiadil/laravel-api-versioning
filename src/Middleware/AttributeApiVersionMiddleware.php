@@ -11,6 +11,7 @@ use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 use ShahGhasiAdil\LaravelApiVersioning\Http\Responses\ProblemDetailsResponse;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
+use ShahGhasiAdil\LaravelApiVersioning\Services\SunsetPolicyManager;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
 use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,7 +20,8 @@ class AttributeApiVersionMiddleware
 {
     public function __construct(
         private readonly VersionManager $versionManager,
-        private readonly AttributeVersionResolver $attributeResolver
+        private readonly AttributeVersionResolver $attributeResolver,
+        private readonly SunsetPolicyManager $sunsetPolicyManager = new SunsetPolicyManager,
     ) {}
 
     /**
@@ -78,13 +80,17 @@ class AttributeApiVersionMiddleware
         $standardHeaders = (bool) ($reportingConfig['standard_headers'] ?? true);
         $legacyHeaders = (bool) ($reportingConfig['legacy_headers'] ?? true);
 
-        if ($standardHeaders && $routeVersions !== []) {
-            $response->headers->set('api-supported-versions', implode(', ', $routeVersions));
+        if ($standardHeaders) {
+            if ($routeVersions !== []) {
+                $response->headers->set('api-supported-versions', implode(', ', $routeVersions));
 
-            $deprecatedVersions = $this->attributeResolver->getDeprecatedVersionsForRoute($route);
-            if ($deprecatedVersions !== []) {
-                $response->headers->set('api-deprecated-versions', implode(', ', $deprecatedVersions));
+                $deprecatedVersions = $this->attributeResolver->getDeprecatedVersionsForRoute($route);
+                if ($deprecatedVersions !== []) {
+                    $response->headers->set('api-deprecated-versions', implode(', ', $deprecatedVersions));
+                }
             }
+
+            $this->addSunsetHeaders($response, $versionInfo);
         }
 
         if ($legacyHeaders) {
@@ -110,6 +116,31 @@ class AttributeApiVersionMiddleware
             if ($routeVersions !== []) {
                 $response->headers->set('X-API-Route-Versions', implode(', ', $routeVersions));
             }
+        }
+    }
+
+    /**
+     * Emit the RFC 8594 'Sunset' header (an HTTP-date) and, when a link is
+     * configured, an RFC 8288 'Link' header with rel="sunset". The policy
+     * can come from config('api-versioning.sunset_policies') or, absent
+     * that, from the sunset date already resolved onto $versionInfo via
+     * #[Deprecated]/#[ApiVersion] attributes -- so this is independent of
+     * (and additional to) the legacy X-API-Sunset header.
+     */
+    private function addSunsetHeaders(Response $response, VersionInfo $versionInfo): void
+    {
+        $policy = $this->sunsetPolicyManager->getPolicy($versionInfo->version, $versionInfo->sunsetDate);
+
+        if ($policy === null) {
+            return;
+        }
+
+        if ($policy->hasDate()) {
+            $response->headers->set('Sunset', $policy->formattedDate());
+        }
+
+        if ($policy->hasLinks()) {
+            $response->headers->set('Link', implode(', ', $policy->formattedLinks()));
         }
     }
 

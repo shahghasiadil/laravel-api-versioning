@@ -53,6 +53,30 @@ test('v1 controller responds to v1 request', function () {
     assertApiVersionDeprecated($response, '2025-12-31');
 });
 
+test('v1 controller emits an RFC 8594 Sunset header from its #[Deprecated] sunset date', function () {
+    $response = getWithVersion('/api/v1/users', '1.0');
+
+    $response->assertStatus(200)
+        ->assertHeader('Sunset', 'Wed, 31 Dec 2025 00:00:00 GMT')
+        ->assertHeaderMissing('Link');
+});
+
+test('a sunset_policies config entry adds a Link header alongside Sunset', function () {
+    config(['api-versioning.sunset_policies' => [
+        '1.0' => [
+            'date' => '2025-12-31',
+            'link' => 'https://example.com/migrate-to-v2',
+            'link_type' => 'text/html',
+        ],
+    ]]);
+
+    $response = getWithVersion('/api/v1/users', '1.0');
+
+    $response->assertStatus(200)
+        ->assertHeader('Sunset', 'Wed, 31 Dec 2025 00:00:00 GMT')
+        ->assertHeader('Link', '<https://example.com/migrate-to-v2>; rel="sunset"; type="text/html"');
+});
+
 test('v2 controller responds to v2 request', function () {
     $response = getWithVersion('/api/v2/users', '2.0');
 

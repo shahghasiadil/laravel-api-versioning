@@ -60,9 +60,12 @@ final readonly class ApiVersion implements Stringable
             return null;
         }
 
-        $group = ($matches['group'] ?? '') !== ''
-            ? DateTimeImmutable::createFromFormat('!Y-m-d', $matches['group']) ?: null
-            : null;
+        $group = null;
+
+        if (($matches['group'] ?? '') !== '') {
+            $parsedGroup = DateTimeImmutable::createFromFormat('!Y-m-d', $matches['group']);
+            $group = $parsedGroup !== false ? $parsedGroup : null;
+        }
 
         return new self(
             groupVersion: $group,

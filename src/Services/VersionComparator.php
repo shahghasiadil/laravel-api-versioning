@@ -171,7 +171,7 @@ class VersionComparator
         }
 
         // Handle comparison operators
-        if (preg_match('/^(>=|<=|>|<|!=|=)(.+)$/', $constraint, $matches)) {
+        if (preg_match('/^(>=|<=|>|<|!=|=)(.+)$/', $constraint, $matches) === 1) {
             $operator = $matches[1];
             $compareVersion = $matches[2];
 

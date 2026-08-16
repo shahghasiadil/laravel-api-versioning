@@ -75,7 +75,11 @@ final class MediaTypeApiVersionReader implements ApiVersionReader
             $entries[] = ['q' => $q, 'params' => $params, 'order' => $index];
         }
 
-        usort($entries, fn (array $a, array $b): int => $b['q'] <=> $a['q'] ?: $a['order'] <=> $b['order']);
+        usort($entries, function (array $a, array $b): int {
+            $byQ = $b['q'] <=> $a['q'];
+
+            return $byQ !== 0 ? $byQ : $a['order'] <=> $b['order'];
+        });
 
         $values = [];
         foreach ($entries as $entry) {

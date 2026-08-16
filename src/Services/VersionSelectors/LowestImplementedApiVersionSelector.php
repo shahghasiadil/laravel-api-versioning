@@ -27,6 +27,6 @@ final class LowestImplementedApiVersionSelector implements ApiVersionSelector
 
         $sorted = (new VersionComparator)->sort($stable);
 
-        return (string) $sorted[0];
+        return $sorted[0];
     }
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning;
 
 use Illuminate\Config\Repository;
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Events\Dispatcher;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route as RouteFacade;
@@ -127,7 +127,7 @@ class ApiVersioningServiceProvider extends ServiceProvider
 
         /** @var mixed $enabled */
         $enabled = config('api-versioning.validate_on_boot', false);
-        if (! $enabled) {
+        if (! (bool) $enabled) {
             return;
         }
 

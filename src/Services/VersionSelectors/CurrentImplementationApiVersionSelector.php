@@ -25,7 +25,7 @@ final class CurrentImplementationApiVersionSelector implements ApiVersionSelecto
 
         $sorted = (new VersionComparator)->sort($stable);
 
-        return (string) end($sorted);
+        return $sorted[count($sorted) - 1];
     }
 
     /**

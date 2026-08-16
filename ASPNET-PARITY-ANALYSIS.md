@@ -28,7 +28,7 @@ what is wrong, and what is worth porting.
 | `UnsupportedApiVersionStatusCode` (400 / 404 / 501) | **Missing** — still hardcoded 400 | [B2](#b2-a-complete-problem-details-vocabulary) |
 | Conventions API (version without touching the class) | **Done** — `ApiVersioning::conventions()` | [C7](#c7-conventions-api) |
 | `ApiVersionRouteConstraint` / url-segment routing | **Done** — `Route::pattern('version', ...)` + `Route::apiVersion([...])->group()` | [C8](#c8-route-level-url-segment-versioning) |
-| API explorer / versioned OpenAPI documents | **Done** (core provider) — `OpenApi\ApiVersionDescriptionProvider`; Scramble/L5-Swagger adapters not built | [C9](#c9-versioned-openapi--description-provider) |
+| API explorer / versioned OpenAPI documents | **Done** — `OpenApi\ApiVersionDescriptionProvider`, plus thin Scramble/L5-Swagger adapters | [C9](#c9-versioned-openapi--description-provider) |
 | `ValidateApiVersioningOptions` at startup | **Done** — `--strict` on `api:version:health`, opt-in `validate_on_boot` | [B5](#b5-make-the-health-check-enforceable) |
 
 ---

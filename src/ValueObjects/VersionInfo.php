@@ -2,6 +2,8 @@
 
 namespace ShahGhasiAdil\LaravelApiVersioning\ValueObjects;
 
+use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
+
 class VersionInfo
 {
     /**
@@ -35,7 +37,7 @@ class VersionInfo
 
     /**
      * Reconstructs an instance from {@see toArray()}'s output, so callers
-     * (namely {@see \ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver})
+     * (namely {@see AttributeVersionResolver})
      * can cache the plain array instead of the object itself -- a cache
      * store never needs to unserialize this class directly.
      *

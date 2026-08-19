@@ -93,6 +93,7 @@ describe('toArray conversion', function () {
             'deprecation_message' => 'Please migrate to v3.0',
             'sunset_date' => '2025-12-31',
             'replaced_by' => '3.0',
+            'route_versions' => null,
         ]);
     });
 
@@ -108,6 +109,7 @@ describe('toArray conversion', function () {
             'deprecation_message' => null,
             'sunset_date' => null,
             'replaced_by' => null,
+            'route_versions' => null,
         ]);
     });
 
@@ -243,6 +245,35 @@ describe('edge cases', function () {
 
         expect($versionInfo->deprecationMessage)->toBe($longMessage);
         expect($versionInfo->toArray()['deprecation_message'])->toBe($longMessage);
+    });
+});
+
+describe('fromArray() round-trip', function () {
+    test('fromArray(toArray()) reconstructs an equivalent instance', function () {
+        $original = new VersionInfo(
+            version: '2.0',
+            isNeutral: true,
+            isDeprecated: true,
+            deprecationMessage: 'Use version 3.0 instead',
+            sunsetDate: '2025-12-31',
+            replacedBy: '3.0',
+            routeVersions: ['1.0', '2.0'],
+        );
+
+        $rebuilt = VersionInfo::fromArray($original->toArray());
+
+        expect($rebuilt)->not->toBe($original);
+        expect($rebuilt->toArray())->toBe($original->toArray());
+        expect($rebuilt->version)->toBe('2.0');
+        expect($rebuilt->routeVersions)->toBe(['1.0', '2.0']);
+    });
+
+    test('fromArray() round-trips minimal/null values', function () {
+        $original = new VersionInfo('1.0');
+
+        $rebuilt = VersionInfo::fromArray($original->toArray());
+
+        expect($rebuilt->toArray())->toBe($original->toArray());
     });
 });
 

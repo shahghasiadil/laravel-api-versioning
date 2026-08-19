@@ -5,8 +5,6 @@ parameters:
     level: max
     paths:
         - src
-    excludePaths:
-        - src/Examples
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true

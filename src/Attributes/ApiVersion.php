@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace ShahGhasiAdil\LaravelApiVersioning\Attributes;
 
 use Attribute;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecation;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersions;
 
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
-class ApiVersion implements HasVersions
+class ApiVersion implements HasVersionDeprecation, HasVersions
 {
     /**
      * @var string[]
@@ -17,9 +18,18 @@ class ApiVersion implements HasVersions
 
     /**
      * @param  string|string[]  $versions
+     * @param  bool  $deprecated  Whether the versions declared here (and only these) are deprecated.
+     *                            Stack multiple #[ApiVersion(...)] attributes to deprecate some
+     *                            versions of an endpoint while keeping others current.
+     * @param  string|null  $sunset  Optional sunset date for the versions declared here.
+     * @param  string|null  $replacedBy  Optional replacement version for the versions declared here.
      */
-    public function __construct(string|array $versions)
-    {
+    public function __construct(
+        string|array $versions,
+        public readonly bool $deprecated = false,
+        public readonly ?string $sunset = null,
+        public readonly ?string $replacedBy = null,
+    ) {
         $this->versions = is_array($versions) ? $versions : [$versions];
     }
 
@@ -34,5 +44,20 @@ class ApiVersion implements HasVersions
     public function hasVersion(string $version): bool
     {
         return in_array($version, $this->versions, true);
+    }
+
+    public function isDeprecated(): bool
+    {
+        return $this->deprecated;
+    }
+
+    public function getSunsetDate(): ?string
+    {
+        return $this->sunset;
+    }
+
+    public function getReplacedBy(): ?string
+    {
+        return $this->replacedBy;
     }
 }

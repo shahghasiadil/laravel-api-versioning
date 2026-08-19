@@ -4,10 +4,20 @@ declare(strict_types=1);
 
 namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 
+use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\ApiVersion;
+
 class VersionComparator
 {
     /**
      * Compare two version strings
+     *
+     * Delegates to {@see ApiVersion} when both strings parse as a valid
+     * API version (group date and/or major.minor-status), which is what
+     * makes `'2' == '2.0'` and correctly-ordered prerelease statuses
+     * (`1.0-beta < 1.0`) work. Falls back to PHP's `version_compare()`
+     * for anything ApiVersion can't parse (e.g. three-part semver like
+     * `2.1.5`), preserving this method's original behavior for those
+     * inputs.
      *
      * @return int Returns < 0 if $version1 is less than $version2;
      *             > 0 if $version1 is greater than $version2;
@@ -15,6 +25,13 @@ class VersionComparator
      */
     public function compare(string $version1, string $version2): int
     {
+        $a = ApiVersion::tryParse($version1);
+        $b = ApiVersion::tryParse($version2);
+
+        if ($a !== null && $b !== null) {
+            return $a->compareTo($b);
+        }
+
         return version_compare($version1, $version2);
     }
 
@@ -69,6 +86,8 @@ class VersionComparator
 
     /**
      * Get the highest version from an array of versions
+     *
+     * @param  string[]  $versions
      */
     public function getHighest(array $versions): ?string
     {
@@ -83,6 +102,8 @@ class VersionComparator
 
     /**
      * Get the lowest version from an array of versions
+     *
+     * @param  string[]  $versions
      */
     public function getLowest(array $versions): ?string
     {
@@ -98,6 +119,7 @@ class VersionComparator
     /**
      * Sort versions in ascending order
      *
+     * @param  string[]  $versions
      * @return string[]
      */
     public function sort(array $versions, bool $descending = false): array
@@ -135,16 +157,21 @@ class VersionComparator
         if (str_starts_with($constraint, '~')) {
             $baseVersion = ltrim($constraint, '~');
             $parts = explode('.', $baseVersion);
-            $majorVersion = $parts[0] ?? '0';
-            $minorVersion = $parts[1] ?? '0';
-            $nextMinor = $majorVersion.'.'.((int) $minorVersion + 1);
+            $majorVersion = (int) ($parts[0] ?? '0');
+
+            // Only a major version was given (e.g. "~2"): allow any minor/patch
+            // within that major, i.e. >=2 <3. Otherwise (e.g. "~2.1"): allow
+            // any patch within that minor, i.e. >=2.1 <2.2.
+            $upperBound = count($parts) < 2
+                ? ($majorVersion + 1).'.0'
+                : $majorVersion.'.'.((int) $parts[1] + 1);
 
             return $this->isGreaterThanOrEqual($version, $baseVersion)
-                && $this->isLessThan($version, $nextMinor);
+                && $this->isLessThan($version, $upperBound);
         }
 
         // Handle comparison operators
-        if (preg_match('/^(>=|<=|>|<|!=|=)(.+)$/', $constraint, $matches)) {
+        if (preg_match('/^(>=|<=|>|<|!=|=)(.+)$/', $constraint, $matches) === 1) {
             $operator = $matches[1];
             $compareVersion = $matches[2];
 

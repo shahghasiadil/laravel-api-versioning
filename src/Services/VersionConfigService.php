@@ -7,15 +7,17 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Services;
 class VersionConfigService
 {
     /**
-     * @var array<string, mixed>
+     * Read the current configuration on every call so runtime changes
+     * (config()->set(), tests, reconfiguration) are always reflected.
+     *
+     * @return array<string, mixed>
      */
-    private readonly array $config;
-
-    public function __construct()
+    private function config(): array
     {
         /** @var array<string, mixed> $config */
         $config = config('api-versioning', []);
-        $this->config = is_array($config) ? $config : [];
+
+        return is_array($config) ? $config : [];
     }
 
     /**
@@ -24,16 +26,13 @@ class VersionConfigService
     public function getMethodForVersion(string $version): string
     {
         /** @var array<string, string> $versionMapping */
-        $versionMapping = $this->config['version_method_mapping'] ?? [];
+        $versionMapping = $this->config()['version_method_mapping'] ?? [];
 
         if (isset($versionMapping[$version])) {
             return $versionMapping[$version];
         }
 
-        /** @var string $defaultMethod */
-        $defaultMethod = $this->config['default_method'] ?? 'toArrayDefault';
-
-        return $defaultMethod;
+        return $this->getDefaultMethod();
     }
 
     /**
@@ -46,7 +45,7 @@ class VersionConfigService
         $chain = [];
         $visited = [];
         /** @var array<string, string> $inheritance */
-        $inheritance = $this->config['version_inheritance'] ?? [];
+        $inheritance = $this->config()['version_inheritance'] ?? [];
         $currentVersion = $version;
 
         while (isset($inheritance[$currentVersion])) {
@@ -78,7 +77,7 @@ class VersionConfigService
     public function getSupportedVersions(): array
     {
         /** @var string[] $supportedVersions */
-        $supportedVersions = $this->config['supported_versions'] ?? [];
+        $supportedVersions = $this->config()['supported_versions'] ?? [];
 
         return $supportedVersions;
     }
@@ -89,7 +88,7 @@ class VersionConfigService
     public function hasVersionMapping(string $version): bool
     {
         /** @var array<string, string> $versionMapping */
-        $versionMapping = $this->config['version_method_mapping'] ?? [];
+        $versionMapping = $this->config()['version_method_mapping'] ?? [];
 
         return isset($versionMapping[$version]);
     }
@@ -102,7 +101,7 @@ class VersionConfigService
     public function getVersionMappings(): array
     {
         /** @var array<string, string> $versionMapping */
-        $versionMapping = $this->config['version_method_mapping'] ?? [];
+        $versionMapping = $this->config()['version_method_mapping'] ?? [];
 
         return $versionMapping;
     }
@@ -115,7 +114,7 @@ class VersionConfigService
     public function getVersionInheritance(): array
     {
         /** @var array<string, string> $inheritance */
-        $inheritance = $this->config['version_inheritance'] ?? [];
+        $inheritance = $this->config()['version_inheritance'] ?? [];
 
         return $inheritance;
     }
@@ -123,8 +122,39 @@ class VersionConfigService
     public function getDefaultMethod(): string
     {
         /** @var string $defaultMethod */
-        $defaultMethod = $this->config['default_method'] ?? 'toArrayDefault';
+        $defaultMethod = $this->config()['default_method'] ?? 'toArrayDefault';
 
         return $defaultMethod;
+    }
+
+    /**
+     * Detect a cycle in 'version_inheritance' by walking each declared
+     * version's chain with a visited-set guard.
+     *
+     * @return string[]|null The cyclic path (for display), or null when acyclic.
+     */
+    public function findInheritanceCycle(): ?array
+    {
+        $inheritance = $this->getVersionInheritance();
+
+        foreach (array_keys($inheritance) as $start) {
+            $path = [$start];
+            $current = $start;
+
+            while (isset($inheritance[$current])) {
+                $current = $inheritance[$current];
+                $path[] = $current;
+
+                if ($current === $start) {
+                    return $path;
+                }
+
+                if (count($path) > count($inheritance) + 1) {
+                    break;
+                }
+            }
+        }
+
+        return null;
     }
 }

@@ -241,6 +241,80 @@ describe('route filtering and display', function () {
     });
 });
 
+describe('path-prefix filtering', function () {
+    test('non-api routes are excluded by default, included with --all', function () {
+        $routes = new RouteCollection;
+
+        $apiRoute = Mockery::mock(Route::class);
+        $apiRoute->shouldReceive('uri')->andReturn('api/users');
+        $apiRoute->shouldReceive('methods')->andReturn(['GET']);
+        $apiRoute->shouldReceive('getActionName')->andReturn('UserController@index');
+        $apiRoute->shouldReceive('getDomain')->andReturn('');
+        $apiRoute->shouldReceive('getName')->andReturn(null);
+        $apiRoute->shouldReceive('getAction')->andReturn([]);
+
+        $webRoute = Mockery::mock(Route::class);
+        $webRoute->shouldReceive('uri')->andReturn('docs/api/guide');
+        $webRoute->shouldReceive('methods')->andReturn(['GET']);
+        $webRoute->shouldReceive('getActionName')->andReturn('DocsController@guide');
+        $webRoute->shouldReceive('getDomain')->andReturn('');
+        $webRoute->shouldReceive('getName')->andReturn(null);
+        $webRoute->shouldReceive('getAction')->andReturn([]);
+
+        $routes->add($apiRoute);
+        $routes->add($webRoute);
+
+        $this->router->shouldReceive('getRoutes')->andReturn($routes);
+
+        $this->resolver->shouldReceive('getAllVersionsForRoute')->with($apiRoute)->andReturn(['1.0']);
+        $this->resolver->shouldReceive('getAllVersionsForRoute')->with($webRoute)->andReturn([]);
+        $this->resolver->shouldReceive('resolveVersionForRoute')->andReturn(new VersionInfo('1.0', false, false));
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0']);
+
+        $output = new BufferedOutput;
+        $this->command->setOutput(new OutputStyle(new ArrayInput([]), $output));
+
+        $input = new ArrayInput(['--json' => true]);
+        $input->bind($this->command->getDefinition());
+        $this->command->setInput($input);
+
+        $this->command->handle();
+
+        $decoded = json_decode($output->fetch(), true);
+        expect($decoded['total_routes'])->toBe(1);
+    });
+
+    test('--all bypasses the path-prefix filter', function () {
+        $routes = new RouteCollection;
+
+        $webRoute = Mockery::mock(Route::class);
+        $webRoute->shouldReceive('uri')->andReturn('web/dashboard');
+        $webRoute->shouldReceive('methods')->andReturn(['GET']);
+        $webRoute->shouldReceive('getActionName')->andReturn('DashboardController@index');
+        $webRoute->shouldReceive('getDomain')->andReturn('');
+        $webRoute->shouldReceive('getName')->andReturn(null);
+        $webRoute->shouldReceive('getAction')->andReturn([]);
+
+        $routes->add($webRoute);
+
+        $this->router->shouldReceive('getRoutes')->andReturn($routes);
+        $this->resolver->shouldReceive('getAllVersionsForRoute')->with($webRoute)->andReturn([]);
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0']);
+
+        $output = new BufferedOutput;
+        $this->command->setOutput(new OutputStyle(new ArrayInput([]), $output));
+
+        $input = new ArrayInput(['--all' => true, '--json' => true]);
+        $input->bind($this->command->getDefinition());
+        $this->command->setInput($input);
+
+        $this->command->handle();
+
+        $decoded = json_decode($output->fetch(), true);
+        expect($decoded['total_routes'])->toBe(1);
+    });
+});
+
 describe('deprecation information handling', function () {
     test('displays deprecation information correctly', function () {
         $routes = new RouteCollection;
@@ -382,6 +456,46 @@ describe('error handling', function () {
         $result = $this->command->handle();
 
         expect($result)->toBe(0); // Should handle gracefully
+    });
+
+    test('surfaces a resolution failure as an errored row instead of reporting healthy', function () {
+        $routes = new RouteCollection;
+
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('uri')->andReturn('api/users');
+        $route->shouldReceive('methods')->andReturn(['GET']);
+        $route->shouldReceive('getActionName')->andReturn('UserController@index');
+        $route->shouldReceive('getDomain')->andReturn('');
+        $route->shouldReceive('getName')->andReturn(null);
+        $route->shouldReceive('getAction')->andReturn([]);
+
+        $routes->add($route);
+
+        $this->router->shouldReceive('getRoutes')->andReturn($routes);
+
+        $this->resolver->shouldReceive('getAllVersionsForRoute')
+            ->with($route)
+            ->andReturn(['1.0']);
+
+        $this->resolver->shouldReceive('resolveVersionForRoute')
+            ->with($route, '1.0')
+            ->andThrow(new Exception('Broken attribute'));
+
+        $this->versionManager->shouldReceive('getSupportedVersions')
+            ->andReturn(['1.0']);
+
+        $output = new BufferedOutput;
+        $this->command->setOutput(new OutputStyle(new ArrayInput([]), $output));
+
+        $input = new ArrayInput(['--json' => true]);
+        $input->bind($this->command->getDefinition());
+        $this->command->setInput($input);
+
+        $this->command->handle();
+
+        $decoded = json_decode($output->fetch(), true);
+        expect($decoded['routes'][0]['Deprecated'])->toBe('ERROR');
+        expect($decoded['routes'][0]['Sunset Date'])->toBe('Broken attribute');
     });
 
     test('displays message when no routes found', function () {

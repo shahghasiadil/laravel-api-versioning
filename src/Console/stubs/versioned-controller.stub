@@ -6,8 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
-use ShahGhasiAdil\LaravelApiVersioning\Attributes\MapToApiVersion;
+{{ deprecatedImport }}
 use ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
 
 {{ versionAttribute }}

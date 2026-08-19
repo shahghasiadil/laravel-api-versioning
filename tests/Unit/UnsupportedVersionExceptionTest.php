@@ -3,6 +3,7 @@
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
+use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 
 beforeEach(function () {
     // Clear any existing configuration to ensure clean state
@@ -46,7 +47,7 @@ describe('exception creation', function () {
 });
 
 describe('json response rendering', function () {
-    test('renders complete error response', function () {
+    test('renders complete error response as an RFC 7807 problem', function () {
         $exception = new UnsupportedVersionException(
             message: 'API version "3.0" is not supported',
             supportedVersions: ['1.0', '2.0', '2.1'],
@@ -58,15 +59,16 @@ describe('json response rendering', function () {
 
         expect($response)->toBeInstanceOf(JsonResponse::class);
         expect($response->getStatusCode())->toBe(400);
+        expect($response->headers->get('Content-Type'))->toBe('application/problem+json');
 
         $data = $response->getData(true);
-        expect($data['error'])->toBe('Unsupported API Version');
-        expect($data['message'])->toBe('API version "3.0" is not supported');
+        expect($data['title'])->toBe('Unsupported API Version');
+        expect($data['status'])->toBe(400);
         expect($data['supported_versions'])->toBe(['1.0', '2.0', '2.1']);
         expect($data['requested_version'])->toBe('3.0');
     });
 
-    test('renders response without requested version', function () {
+    test('renders response with requested version "unknown" when none was given', function () {
         $exception = new UnsupportedVersionException(
             message: 'Invalid version format',
             supportedVersions: ['1.0', '2.0'],
@@ -77,10 +79,9 @@ describe('json response rendering', function () {
         $response = $exception->render($request);
 
         $data = $response->getData(true);
-        expect($data['error'])->toBe('Unsupported API Version');
-        expect($data['message'])->toBe('Invalid version format');
+        expect($data['title'])->toBe('Unsupported API Version');
         expect($data['supported_versions'])->toBe(['1.0', '2.0']);
-        expect($data)->not()->toHaveKey('requested_version');
+        expect($data['requested_version'])->toBe('unknown');
     });
 
     test('renders response with empty supported versions', function () {
@@ -139,6 +140,59 @@ describe('json response rendering', function () {
     });
 });
 
+describe('reason-based rendering', function () {
+    test('defaults to the Unsupported reason', function () {
+        $exception = new UnsupportedVersionException('Error');
+
+        expect($exception->reason)->toBe(VersionProblemReason::Unsupported);
+        expect($exception->context)->toBe([]);
+    });
+
+    test('renders the Unspecified reason with its own title and code', function () {
+        $exception = new UnsupportedVersionException(
+            message: 'No version given',
+            supportedVersions: ['1.0', '2.0'],
+            reason: VersionProblemReason::Unspecified
+        );
+
+        $data = $exception->render(Request::create('/api/users'))->getData(true);
+
+        expect($data['title'])->toBe('Unspecified API Version');
+        expect($data['code'])->toBe('ApiVersionUnspecified');
+        expect($data)->not()->toHaveKey('requested_version');
+    });
+
+    test('renders the Invalid reason with the malformed value', function () {
+        $exception = new UnsupportedVersionException(
+            message: 'Bad format',
+            supportedVersions: ['1.0', '2.0'],
+            requestedVersion: 'garbage!!',
+            reason: VersionProblemReason::Invalid
+        );
+
+        $data = $exception->render(Request::create('/api/users'))->getData(true);
+
+        expect($data['title'])->toBe('Invalid API Version');
+        expect($data['code'])->toBe('InvalidApiVersion');
+        expect($data['requested_version'])->toBe('garbage!!');
+    });
+
+    test('renders the Ambiguous reason with the conflicting values', function () {
+        $exception = new UnsupportedVersionException(
+            message: 'Conflict',
+            supportedVersions: ['1.0', '2.0'],
+            reason: VersionProblemReason::Ambiguous,
+            context: ['conflicts' => ['header' => '1.0', 'query' => '2.0']]
+        );
+
+        $data = $exception->render(Request::create('/api/users'))->getData(true);
+
+        expect($data['title'])->toBe('Ambiguous API Version');
+        expect($data['code'])->toBe('AmbiguousApiVersion');
+        expect($data['conflicts'])->toBe(['header' => '1.0', 'query' => '2.0']);
+    });
+});
+
 describe('inheritance behavior', function () {
     test('extends standard Exception class', function () {
         $exception = new UnsupportedVersionException('Test');
@@ -170,15 +224,15 @@ describe('inheritance behavior', function () {
 });
 
 describe('edge cases', function () {
-    test('handles very long error messages', function () {
+    test('handles very long error messages without breaking rendering', function () {
         $longMessage = str_repeat('Very long error message. ', 100);
         $exception = new UnsupportedVersionException($longMessage);
 
         $request = Request::create('/api/test');
         $response = $exception->render($request);
 
-        $data = $response->getData(true);
-        expect($data['message'])->toBe($longMessage);
+        expect($response->getStatusCode())->toBe(400);
+        expect($response->getData(true)['title'])->toBe('Unsupported API Version');
     });
 
     test('handles special characters in version strings', function () {

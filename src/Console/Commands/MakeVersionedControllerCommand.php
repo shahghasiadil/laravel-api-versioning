@@ -48,10 +48,18 @@ class MakeVersionedControllerCommand extends GeneratorCommand
         /** @var string|null $replacedBy */
         $replacedBy = $this->option('replaced-by');
 
+        if (! $isDeprecated) {
+            // Drop the whole placeholder line (not just its content), so an
+            // undeprecated generated controller has neither an unused
+            // `Deprecated` import nor a stray blank line where it stood.
+            $stub = preg_replace('/^\{\{ deprecatedImport \}\}\n/m', '', $stub) ?? $stub;
+        }
+
         $replacements = [
             '{{ version }}' => $version,
             '{{ versionAttribute }}' => "#[ApiVersion('{$version}')]",
             '{{ deprecatedAttribute }}' => $isDeprecated ? $this->buildDeprecatedAttribute($sunsetDate, $replacedBy) : '',
+            '{{ deprecatedImport }}' => $isDeprecated ? 'use ShahGhasiAdil\\LaravelApiVersioning\\Attributes\\Deprecated;' : '',
             '{{ namespace }}' => $this->getNamespace($name),
             '{{ class }}' => $this->getClassName($name),
         ];

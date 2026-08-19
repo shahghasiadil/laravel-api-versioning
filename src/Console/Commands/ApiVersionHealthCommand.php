@@ -8,18 +8,23 @@ use Illuminate\Console\Command;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionConfigService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
 
 class ApiVersionHealthCommand extends Command
 {
-    protected $signature = 'api:version:health';
+    protected $signature = 'api:version:health
+                           {--strict : Treat warnings as failures (non-zero exit code)}';
 
     protected $description = 'Check API versioning configuration health';
+
+    private bool $hasWarnings = false;
 
     public function __construct(
         private readonly Router $router,
         private readonly VersionManager $versionManager,
-        private readonly AttributeVersionResolver $resolver
+        private readonly AttributeVersionResolver $resolver,
+        private readonly VersionConfigService $configService
     ) {
         parent::__construct();
     }
@@ -29,6 +34,7 @@ class ApiVersionHealthCommand extends Command
         $this->components->info('Running API Versioning Health Check...');
         $this->newLine();
 
+        $strict = (bool) $this->option('strict');
         $hasErrors = false;
 
         // Check 1: Supported versions configuration
@@ -55,7 +61,7 @@ class ApiVersionHealthCommand extends Command
             return (bool) ($config['enabled'] ?? false);
         });
         if ($enabledMethods === []) {
-            $this->components->warn('⚠ No detection methods enabled');
+            $this->recordWarning('⚠ No detection methods enabled');
         } else {
             $this->components->info('✓ Enabled detection methods: '.implode(', ', array_keys($enabledMethods)));
         }
@@ -72,7 +78,7 @@ class ApiVersionHealthCommand extends Command
         });
 
         if ($versionedRoutes->isEmpty()) {
-            $this->components->warn('⚠ No routes with version attributes found');
+            $this->recordWarning('⚠ No routes with version attributes found');
         } else {
             $this->components->info('✓ Found '.$versionedRoutes->count().' versioned routes');
         }
@@ -87,7 +93,7 @@ class ApiVersionHealthCommand extends Command
 
         $orphanedVersions = array_diff($supportedVersions, $usedVersions);
         if ($orphanedVersions !== []) {
-            $this->components->warn('⚠ Configured versions not used in any route: '.implode(', ', $orphanedVersions));
+            $this->recordWarning('⚠ Configured versions not used in any route: '.implode(', ', $orphanedVersions));
         }
 
         $unsupportedVersions = array_diff($usedVersions, $supportedVersions);
@@ -102,13 +108,33 @@ class ApiVersionHealthCommand extends Command
         if ($cacheEnabled) {
             $this->components->info('✓ Attribute caching enabled');
         } else {
-            $this->components->warn('⚠ Attribute caching disabled (may impact performance)');
+            $this->recordWarning('⚠ Attribute caching disabled (may impact performance)');
+        }
+
+        // Check 7: version_method_mapping keys that aren't in supported_versions
+        $mappedVersions = array_keys($this->configService->getVersionMappings());
+        $unmappedSupported = array_diff($mappedVersions, $supportedVersions);
+        if ($unmappedSupported !== []) {
+            $this->recordWarning('⚠ version_method_mapping declares versions not in supported_versions: '.implode(', ', $unmappedSupported));
+        } else {
+            $this->components->info('✓ version_method_mapping keys are all supported versions');
+        }
+
+        // Check 8: cycles in version_inheritance
+        $cycle = $this->configService->findInheritanceCycle();
+        if ($cycle !== null) {
+            $this->components->error('✗ version_inheritance contains a cycle: '.implode(' -> ', $cycle));
+            $hasErrors = true;
+        } else {
+            $this->components->info('✓ version_inheritance has no cycles');
         }
 
         $this->newLine();
 
-        if ($hasErrors) {
-            $this->components->error('Health check failed with errors');
+        if ($hasErrors || ($strict && $this->hasWarnings)) {
+            $this->components->error($hasErrors
+                ? 'Health check failed with errors'
+                : 'Health check failed: warnings present and --strict was given');
 
             return self::FAILURE;
         }
@@ -116,5 +142,11 @@ class ApiVersionHealthCommand extends Command
         $this->components->info('✅ All health checks passed!');
 
         return self::SUCCESS;
+    }
+
+    private function recordWarning(string $message): void
+    {
+        $this->hasWarnings = true;
+        $this->components->warn($message);
     }
 }

@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
+use ShahGhasiAdil\LaravelApiVersioning\Exceptions\VersionProblemReason;
 use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
 
 beforeEach(function () {
@@ -170,6 +171,38 @@ describe('media type version extraction', function () {
 
         expect($version)->toBe('2.0'); // Falls back to default
     });
+
+    test('extracts a quoted parameter value', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set('Accept', 'application/vnd.api+json;version="2.1"');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.1');
+    });
+
+    test('falls back to Content-Type when Accept has no version', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set('Accept', 'application/json');
+        $request->headers->set('Content-Type', 'application/vnd.api+json;version=1.1');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('1.1');
+    });
+
+    test('prefers a higher q-value entry over one listed first', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set(
+            'Accept',
+            'application/vnd.api+json;version=1.0;q=0.5, application/vnd.api+json;version=2.0;q=0.9'
+        );
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.0');
+    });
+
+    test('respects parameter order and unrelated parameters', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set('Accept', 'application/vnd.api+json; charset=utf-8; version=2.0');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.0');
+    });
 });
 
 describe('version validation', function () {
@@ -219,6 +252,117 @@ describe('disabled detection methods', function () {
         $version = $versionManager->detectVersionFromRequest($request);
 
         expect($version)->toBe('1.1'); // Uses path instead of query
+    });
+});
+
+describe('version_detection.require_explicit_version', function () {
+    test('still assumes default_version when disabled (default)', function () {
+        $request = Request::create('/api/users');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.0');
+    });
+
+    test('throws an Unspecified problem when enabled and no version is given', function () {
+        $config = $this->config;
+        $config['version_detection']['require_explicit_version'] = true;
+        $versionManager = new VersionManager($config);
+
+        $request = Request::create('/api/users');
+
+        try {
+            $versionManager->detectVersionFromRequest($request);
+            $this->fail('Expected UnsupportedVersionException to be thrown.');
+        } catch (UnsupportedVersionException $e) {
+            expect($e->reason)->toBe(VersionProblemReason::Unspecified);
+            expect($e->requestedVersion)->toBeNull();
+        }
+    });
+
+    test('does not interfere when a version is explicitly given', function () {
+        $config = $this->config;
+        $config['version_detection']['require_explicit_version'] = true;
+        $versionManager = new VersionManager($config);
+
+        $request = Request::create('/api/users');
+        $request->headers->set('X-API-Version', '1.0');
+
+        expect($versionManager->detectVersionFromRequest($request))->toBe('1.0');
+    });
+});
+
+describe('version_detection.reject_conflicting_versions', function () {
+    test('still uses first-match-wins when disabled (default)', function () {
+        $request = Request::create('/api/users?api-version=1.0');
+        $request->headers->set('X-API-Version', '2.1');
+
+        expect($this->versionManager->detectVersionFromRequest($request))->toBe('2.1');
+    });
+
+    test('throws an Ambiguous problem when enabled and methods disagree', function () {
+        $config = $this->config;
+        $config['version_detection']['reject_conflicting_versions'] = true;
+        $versionManager = new VersionManager($config);
+
+        $request = Request::create('/api/users?api-version=1.0');
+        $request->headers->set('X-API-Version', '2.1');
+
+        try {
+            $versionManager->detectVersionFromRequest($request);
+            $this->fail('Expected UnsupportedVersionException to be thrown.');
+        } catch (UnsupportedVersionException $e) {
+            expect($e->reason)->toBe(VersionProblemReason::Ambiguous);
+            expect($e->context['conflicts'])->toBe(['header' => '2.1', 'query' => '1.0']);
+        }
+    });
+
+    test('does not throw when enabled but every method agrees', function () {
+        $config = $this->config;
+        $config['version_detection']['reject_conflicting_versions'] = true;
+        $versionManager = new VersionManager($config);
+
+        $request = Request::create('/api/users?api-version=2.1');
+        $request->headers->set('X-API-Version', '2.1');
+
+        expect($versionManager->detectVersionFromRequest($request))->toBe('2.1');
+    });
+});
+
+describe('version_detection.format_validation', function () {
+    test('does not validate format when disabled (default)', function () {
+        $request = Request::create('/api/users');
+        $request->headers->set('X-API-Version', 'not-a-version-at-all!!');
+
+        // Falls through to the ordinary "unsupported" path, not "invalid".
+        expect(fn () => $this->versionManager->detectVersionFromRequest($request))
+            ->toThrow(UnsupportedVersionException::class);
+    });
+
+    test('throws an Invalid problem for a malformed version when enabled', function () {
+        $config = $this->config;
+        $config['version_detection']['format_validation']['enabled'] = true;
+        $versionManager = new VersionManager($config);
+
+        $request = Request::create('/api/users');
+        $request->headers->set('X-API-Version', 'not-a-version-at-all!!');
+
+        try {
+            $versionManager->detectVersionFromRequest($request);
+            $this->fail('Expected UnsupportedVersionException to be thrown.');
+        } catch (UnsupportedVersionException $e) {
+            expect($e->reason)->toBe(VersionProblemReason::Invalid);
+            expect($e->requestedVersion)->toBe('not-a-version-at-all!!');
+        }
+    });
+
+    test('accepts validly formatted versions when enabled', function () {
+        $config = $this->config;
+        $config['version_detection']['format_validation']['enabled'] = true;
+        $versionManager = new VersionManager($config);
+
+        $request = Request::create('/api/users');
+        $request->headers->set('X-API-Version', '2.1');
+
+        expect($versionManager->detectVersionFromRequest($request))->toBe('2.1');
     });
 });
 

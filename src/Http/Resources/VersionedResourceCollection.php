@@ -6,6 +6,7 @@ namespace ShahGhasiAdil\LaravelApiVersioning\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionConfigService;
 use ShahGhasiAdil\LaravelApiVersioning\Traits\HasApiVersionAttributes;
 
 abstract class VersionedResourceCollection extends ResourceCollection
@@ -42,39 +43,33 @@ abstract class VersionedResourceCollection extends ResourceCollection
      */
     protected function callVersionMethod(string $version, Request $request): array
     {
-        $config = config('api-versioning', []);
-        $versionMapping = $config['version_method_mapping'] ?? [];
-        $inheritance = $config['version_inheritance'] ?? [];
-        $defaultMethod = 'toArrayDefault';
+        $configService = app(VersionConfigService::class);
 
         // Handle default version request
         if ($version === 'default') {
-            return $this->callMethodIfExists($defaultMethod, $request);
+            return $this->callMethodIfExists($configService->getDefaultMethod(), $request);
         }
 
         // Try the direct version mapping first
-        if (isset($versionMapping[$version])) {
-            $method = $versionMapping[$version];
+        if ($configService->hasVersionMapping($version)) {
+            $method = $configService->getMethodForVersion($version);
             if ($this->methodExists($method)) {
                 return $this->callMethodIfExists($method, $request);
             }
         }
 
-        // Try inheritance chain
-        $currentVersion = $version;
-        while (isset($inheritance[$currentVersion])) {
-            $parentVersion = $inheritance[$currentVersion];
-            if (isset($versionMapping[$parentVersion])) {
-                $method = $versionMapping[$parentVersion];
+        // Try inheritance chain (cycle-safe: see VersionConfigService::getInheritanceChain)
+        foreach ($configService->getInheritanceChain($version) as $parentVersion) {
+            if ($configService->hasVersionMapping($parentVersion)) {
+                $method = $configService->getMethodForVersion($parentVersion);
                 if ($this->methodExists($method)) {
                     return $this->callMethodIfExists($method, $request);
                 }
             }
-            $currentVersion = $parentVersion;
         }
 
         // Fall back to default method
-        return $this->callMethodIfExists($defaultMethod, $request);
+        return $this->callMethodIfExists($configService->getDefaultMethod(), $request);
     }
 
     /**

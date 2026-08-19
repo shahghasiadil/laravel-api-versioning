@@ -4,6 +4,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Event;
+use ShahGhasiAdil\LaravelApiVersioning\Events\ApiVersionResolved;
+use ShahGhasiAdil\LaravelApiVersioning\Events\DeprecatedApiVersionUsed;
 use ShahGhasiAdil\LaravelApiVersioning\Exceptions\UnsupportedVersionException;
 use ShahGhasiAdil\LaravelApiVersioning\Middleware\AttributeApiVersionMiddleware;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
@@ -54,6 +57,11 @@ describe('successful request handling', function () {
             ->once()
             ->andReturn(['2.0', '2.1']);
 
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')
+            ->with($route)
+            ->once()
+            ->andReturn([]);
+
         $response = new Response('{"data": "test"}', 200, ['Content-Type' => 'application/json']);
 
         $result = $this->middleware->handle($request, fn () => $response);
@@ -64,6 +72,8 @@ describe('successful request handling', function () {
         expect($result->headers->get('X-API-Version'))->toBe('2.0');
         expect($result->headers->get('X-API-Supported-Versions'))->toBe('1.0, 2.0, 2.1');
         expect($result->headers->get('X-API-Route-Versions'))->toBe('2.0, 2.1');
+        expect($result->headers->get('api-supported-versions'))->toBe('2.0, 2.1');
+        expect($result->headers->has('api-deprecated-versions'))->toBeFalse();
     });
 
     test('adds deprecation headers for deprecated version', function () {
@@ -99,6 +109,11 @@ describe('successful request handling', function () {
             ->once()
             ->andReturn(['1.0']);
 
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')
+            ->with($route)
+            ->once()
+            ->andReturn(['1.0']);
+
         $response = new Response('{"data": "test"}');
 
         $result = $this->middleware->handle($request, fn () => $response);
@@ -108,6 +123,8 @@ describe('successful request handling', function () {
         expect($result->headers->get('X-API-Deprecation-Message'))->toBe('Use v2.0 instead');
         expect($result->headers->get('X-API-Sunset'))->toBe('2025-12-31');
         expect($result->headers->get('X-API-Replaced-By'))->toBe('2.0');
+        expect($result->headers->get('api-supported-versions'))->toBe('1.0');
+        expect($result->headers->get('api-deprecated-versions'))->toBe('1.0');
     });
 
     test('handles partial deprecation information', function () {
@@ -134,6 +151,9 @@ describe('successful request handling', function () {
             ->andReturn($versionInfo);
 
         $this->attributeResolver->shouldReceive('getAllVersionsForRoute')
+            ->andReturn(['1.0']);
+
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')
             ->andReturn(['1.0']);
 
         $response = new Response;
@@ -294,5 +314,206 @@ describe('header management', function () {
         $result = $this->middleware->handle($request, fn () => $response);
 
         expect($result->headers->has('X-API-Route-Versions'))->toBeFalse();
+        expect($result->headers->has('api-supported-versions'))->toBeFalse();
+    });
+});
+
+describe('standard vs legacy reporting header config', function () {
+    beforeEach(function () {
+        $this->request = Request::create('/api/users');
+        $this->route = Mockery::mock(Route::class);
+        $this->request->setRouteResolver(fn () => $this->route);
+
+        $this->versionInfo = new VersionInfo(
+            version: '2.0',
+            isDeprecated: false,
+            isNeutral: false
+        );
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('2.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($this->versionInfo);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['2.0']);
+    });
+
+    test('legacy_headers=false omits the X-API-* headers but keeps the standard ones', function () {
+        config(['api-versioning.reporting.legacy_headers' => false]);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn([]);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('X-API-Supported-Versions'))->toBeFalse();
+        expect($result->headers->has('X-API-Route-Versions'))->toBeFalse();
+        expect($result->headers->get('api-supported-versions'))->toBe('2.0');
+    });
+
+    test('standard_headers=false omits the standard headers but keeps the legacy ones', function () {
+        config(['api-versioning.reporting.standard_headers' => false]);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('api-supported-versions'))->toBeFalse();
+        expect($result->headers->has('api-deprecated-versions'))->toBeFalse();
+        expect($result->headers->get('X-API-Supported-Versions'))->toBe('1.0, 2.0');
+        expect($result->headers->get('X-API-Route-Versions'))->toBe('2.0');
+    });
+});
+
+describe('RFC 8594 Sunset / RFC 8288 Link headers', function () {
+    beforeEach(function () {
+        $this->request = Request::create('/api/users');
+        $this->route = Mockery::mock(Route::class);
+        $this->request->setRouteResolver(fn () => $this->route);
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('1.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['1.0']);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn(['1.0']);
+    });
+
+    test('emits Sunset from the attribute-resolved sunset date, with no config policy needed', function () {
+        config(['api-versioning.sunset_policies' => []]);
+
+        $versionInfo = new VersionInfo(
+            version: '1.0',
+            isDeprecated: true,
+            sunsetDate: '2026-06-30'
+        );
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->get('Sunset'))->toBe('Tue, 30 Jun 2026 00:00:00 GMT');
+        expect($result->headers->has('Link'))->toBeFalse();
+    });
+
+    test('emits Sunset and Link from a config policy, overriding the attribute date', function () {
+        config(['api-versioning.sunset_policies' => [
+            '1.0' => [
+                'date' => '2027-01-01',
+                'link' => 'https://example.com/migrate',
+                'link_type' => 'text/html',
+            ],
+        ]]);
+
+        $versionInfo = new VersionInfo(
+            version: '1.0',
+            isDeprecated: true,
+            sunsetDate: '2026-06-30'
+        );
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->get('Sunset'))->toBe('Fri, 01 Jan 2027 00:00:00 GMT');
+        expect($result->headers->get('Link'))->toBe('<https://example.com/migrate>; rel="sunset"; type="text/html"');
+    });
+
+    test('a config policy can sunset a version with no #[Deprecated] attribute at all', function () {
+        config(['api-versioning.sunset_policies' => [
+            '1.0' => ['date' => '2027-01-01'],
+        ]]);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: false, sunsetDate: null);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->get('Sunset'))->toBe('Fri, 01 Jan 2027 00:00:00 GMT');
+    });
+
+    test('omits Sunset and Link when no policy is resolvable', function () {
+        config(['api-versioning.sunset_policies' => []]);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: false, sunsetDate: null);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('Sunset'))->toBeFalse();
+        expect($result->headers->has('Link'))->toBeFalse();
+    });
+
+    test('standard_headers=false omits Sunset and Link too', function () {
+        config([
+            'api-versioning.reporting.standard_headers' => false,
+            'api-versioning.sunset_policies' => ['1.0' => ['date' => '2027-01-01']],
+        ]);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: true, sunsetDate: '2026-06-30');
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+
+        $result = $this->middleware->handle($this->request, fn () => new Response);
+
+        expect($result->headers->has('Sunset'))->toBeFalse();
+        expect($result->headers->has('Link'))->toBeFalse();
+        // The legacy header is unaffected by the sunset_policies feature.
+        expect($result->headers->get('X-API-Sunset'))->toBe('2026-06-30');
+    });
+});
+
+describe('deprecation telemetry events', function () {
+    test('dispatches ApiVersionResolved on every successful resolution', function () {
+        Event::fake();
+
+        $request = Request::create('/api/users');
+        $route = Mockery::mock(Route::class);
+        $request->setRouteResolver(fn () => $route);
+
+        $versionInfo = new VersionInfo(version: '2.0', isDeprecated: false);
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('2.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['2.0']);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn([]);
+
+        $this->middleware->handle($request, fn () => new Response);
+
+        Event::assertDispatched(ApiVersionResolved::class, function (ApiVersionResolved $event) use ($request, $versionInfo) {
+            return $event->request === $request && $event->versionInfo === $versionInfo;
+        });
+        Event::assertNotDispatched(DeprecatedApiVersionUsed::class);
+    });
+
+    test('also dispatches DeprecatedApiVersionUsed when the resolved version is deprecated', function () {
+        Event::fake();
+
+        $request = Request::create('/api/users');
+        $route = Mockery::mock(Route::class);
+        $request->setRouteResolver(fn () => $route);
+
+        $versionInfo = new VersionInfo(version: '1.0', isDeprecated: true, deprecationMessage: 'Use v2.0');
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('1.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn($versionInfo);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['1.0']);
+        $this->attributeResolver->shouldReceive('getDeprecatedVersionsForRoute')->andReturn(['1.0']);
+
+        $this->middleware->handle($request, fn () => new Response);
+
+        Event::assertDispatched(ApiVersionResolved::class);
+        Event::assertDispatched(DeprecatedApiVersionUsed::class, function (DeprecatedApiVersionUsed $event) use ($versionInfo) {
+            return $event->versionInfo === $versionInfo;
+        });
+    });
+
+    test('dispatches nothing when the version cannot be resolved', function () {
+        Event::fake();
+
+        $request = Request::create('/api/users');
+        $route = Mockery::mock(Route::class);
+        $request->setRouteResolver(fn () => $route);
+
+        $this->versionManager->shouldReceive('detectVersionFromRequest')->andReturn('3.0');
+        $this->versionManager->shouldReceive('getSupportedVersions')->andReturn(['1.0', '2.0']);
+        $this->attributeResolver->shouldReceive('resolveVersionForRoute')->andReturn(null);
+        $this->attributeResolver->shouldReceive('getAllVersionsForRoute')->andReturn(['1.0', '2.0']);
+
+        $this->middleware->handle($request, fn () => new Response);
+
+        Event::assertNotDispatched(ApiVersionResolved::class);
+        Event::assertNotDispatched(DeprecatedApiVersionUsed::class);
     });
 });

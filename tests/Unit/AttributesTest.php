@@ -1,7 +1,9 @@
 <?php
 
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\AdvertiseApiVersions;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersion;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\ApiVersionNeutral;
+use ShahGhasiAdil\LaravelApiVersioning\Attributes\Contracts\HasVersionDeprecation;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\Deprecated;
 use ShahGhasiAdil\LaravelApiVersioning\Attributes\MapToApiVersion;
 
@@ -43,6 +45,29 @@ describe('ApiVersion attribute', function () {
         $attribute = new ApiVersion([1, 2, 3]);
 
         expect($attribute->versions)->toBe([1, 2, 3]);
+    });
+
+    test('defaults to not deprecated with no sunset or replacement', function () {
+        $attribute = new ApiVersion('1.0');
+
+        expect($attribute)->toBeInstanceOf(HasVersionDeprecation::class);
+        expect($attribute->isDeprecated())->toBeFalse();
+        expect($attribute->getSunsetDate())->toBeNull();
+        expect($attribute->getReplacedBy())->toBeNull();
+    });
+
+    test('can be marked deprecated with a sunset date and replacement', function () {
+        $attribute = new ApiVersion(
+            '1.0',
+            deprecated: true,
+            sunset: '2026-06-30',
+            replacedBy: '2.0'
+        );
+
+        expect($attribute->deprecated)->toBeTrue();
+        expect($attribute->isDeprecated())->toBeTrue();
+        expect($attribute->getSunsetDate())->toBe('2026-06-30');
+        expect($attribute->getReplacedBy())->toBe('2.0');
     });
 });
 
@@ -153,6 +178,26 @@ describe('MapToApiVersion attribute', function () {
 
         expect($attribute->versions)->toBe($versions);
     });
+
+    test('defaults to not deprecated', function () {
+        $attribute = new MapToApiVersion('1.0');
+
+        expect($attribute)->toBeInstanceOf(HasVersionDeprecation::class);
+        expect($attribute->isDeprecated())->toBeFalse();
+    });
+
+    test('can be marked deprecated with a sunset date and replacement', function () {
+        $attribute = new MapToApiVersion(
+            '1.0',
+            deprecated: true,
+            sunset: '2026-06-30',
+            replacedBy: '2.0'
+        );
+
+        expect($attribute->isDeprecated())->toBeTrue();
+        expect($attribute->getSunsetDate())->toBe('2026-06-30');
+        expect($attribute->getReplacedBy())->toBe('2.0');
+    });
 });
 
 describe('attribute usage on classes', function () {
@@ -237,6 +282,49 @@ describe('attribute usage on methods', function () {
 
         expect($mapAttributes)->toHaveCount(1);
         expect($deprecatedAttributes)->toHaveCount(1);
+    });
+});
+
+describe('AdvertiseApiVersions attribute', function () {
+    test('creates with single version string', function () {
+        $attribute = new AdvertiseApiVersions('3.0');
+
+        expect($attribute->versions)->toBe(['3.0']);
+    });
+
+    test('creates with version array', function () {
+        $attribute = new AdvertiseApiVersions(['3.0', '3.1']);
+
+        expect($attribute->versions)->toBe(['3.0', '3.1']);
+    });
+
+    test('defaults to not deprecated', function () {
+        $attribute = new AdvertiseApiVersions('3.0');
+
+        expect($attribute)->toBeInstanceOf(HasVersionDeprecation::class);
+        expect($attribute->isDeprecated())->toBeFalse();
+    });
+
+    test('can be marked deprecated with a sunset date and replacement', function () {
+        $attribute = new AdvertiseApiVersions(
+            '3.0',
+            deprecated: true,
+            sunset: '2026-06-30',
+            replacedBy: '4.0'
+        );
+
+        expect($attribute->isDeprecated())->toBeTrue();
+        expect($attribute->getSunsetDate())->toBe('2026-06-30');
+        expect($attribute->getReplacedBy())->toBe('4.0');
+    });
+
+    test('can be applied to classes and methods, repeatably', function () {
+        $class = new #[AdvertiseApiVersions('3.0')] #[AdvertiseApiVersions('4.0')] class {};
+
+        $reflection = new ReflectionClass($class);
+        $attributes = $reflection->getAttributes(AdvertiseApiVersions::class);
+
+        expect($attributes)->toHaveCount(2);
     });
 });
 

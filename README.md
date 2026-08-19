@@ -112,6 +112,8 @@ curl -H "Accept: application/vnd.api+json;version=2.0" https://api.example.com/a
 ## Features
 
 - Controller and method level attributes (`ApiVersion`, `MapToApiVersion`)
+- Per-version deprecation, and advertising versions implemented elsewhere (`AdvertiseApiVersions`)
+- Deprecation telemetry events (`ApiVersionResolved`, `DeprecatedApiVersionUsed`)
 - Version-neutral endpoints (`ApiVersionNeutral`)
 - Deprecation metadata (`Deprecated` with message, sunset date, replacement)
 - Multiple version detection methods (header, query, path, media type)
@@ -135,12 +137,35 @@ Use on a controller or method.
 #[ApiVersion(['1.0', '1.1', '2.0'])]
 ```
 
+Stack multiple `#[ApiVersion(...)]` attributes to deprecate only *some* of the
+versions a single controller/method serves, instead of the whole endpoint.
+This is different from a class/method-level `#[Deprecated]` attribute, which
+applies to every version the endpoint serves:
+
+```php
+#[ApiVersion('1.0', deprecated: true, sunset: '2026-06-30', replacedBy: '2.0')]
+#[ApiVersion('2.0')]
+class OrderController extends Controller
+{
+    // requests for 1.0 get the deprecation headers; requests for 2.0 don't.
+}
+```
+
+Add a `#[Deprecated(message: '...')]` attribute alongside it to supply a
+human-readable deprecation message for the deprecated version(s) — the
+message applies only to versions marked `deprecated: true` on their own
+`#[ApiVersion]`/`#[MapToApiVersion]` attribute when at least one such
+attribute is used this way.
+
 ### `MapToApiVersion`
 
-Use on a method to map it to specific versions.
+Use on a method to map it to specific versions. Accepts the same
+`deprecated`, `sunset`, and `replacedBy` parameters as `#[ApiVersion]`.
 
 ```php
 #[MapToApiVersion(['2.0', '2.1'])]
+
+#[MapToApiVersion('1.0', deprecated: true, sunset: '2026-06-30', replacedBy: '2.0')]
 ```
 
 ### `ApiVersionNeutral`
@@ -169,9 +194,43 @@ Add deprecation metadata to controller/method.
 )]
 ```
 
+### `AdvertiseApiVersions`
+
+Declares that a version exists and is implemented *elsewhere* — another
+service, another package, a gateway route — rather than by this
+controller/method. Unlike `#[ApiVersion]`, an advertised version is never
+resolved by the endpoint that declares it; it only appears in discovery
+data (`api-supported-versions`, `X-API-Route-Versions`, `getAllVersionsForRoute()`,
+the `api:versions` command) so clients and API explorers know it exists.
+
+```php
+#[ApiVersion('2.0')]
+#[AdvertiseApiVersions('3.0')]           // implemented by a different service
+class OrderController extends Controller
+{
+    // requests for 2.0 are handled here; requests for 3.0 still 400,
+    // but every response's headers list 3.0 as a version this API has.
+}
+```
+
+Accepts the same `deprecated`, `sunset`, and `replacedBy` parameters as
+`#[ApiVersion]`, so an advertised version can also report as deprecated.
+
 ## Response Headers
 
-When middleware is active, responses can include:
+When middleware is active, responses can include two sets of headers,
+controlled independently via `config('api-versioning.reporting')`:
+
+**Standard headers** (`reporting.standard_headers`, default `true`) — scoped
+to the current endpoint, matching common REST API versioning conventions:
+
+```http
+api-supported-versions: 2.0, 2.1
+api-deprecated-versions: 2.0
+```
+
+**Legacy headers** (`reporting.legacy_headers`, default `true`) — this
+package's original headers, kept for backward compatibility:
 
 ```http
 X-API-Version: 2.0
@@ -182,6 +241,47 @@ X-API-Deprecation-Message: Use store() instead
 X-API-Sunset: 2026-12-31
 X-API-Replaced-By: 2.1
 ```
+
+Note the difference in scope: `api-supported-versions`/`X-API-Route-Versions`
+report what *this endpoint* supports, while `X-API-Supported-Versions`
+reports your application's entire `supported_versions` config list.
+`X-API-Version` is always emitted regardless of these settings.
+
+### Sunset Policies (RFC 8594 / RFC 8288)
+
+When `reporting.standard_headers` is enabled, a deprecated version with a
+sunset date also gets a standards-compliant `Sunset` header — an HTTP-date,
+per [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594) — instead of the raw
+string in the legacy `X-API-Sunset` header:
+
+```http
+Sunset: Tue, 30 Jun 2026 23:59:59 GMT
+```
+
+This works with no config: any version deprecated via
+`#[Deprecated(sunsetDate: '...')]` or `#[ApiVersion(sunset: '...')]` gets it
+for free. To also attach an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288)
+`Link` header pointing to a migration guide, or to sunset a version without
+touching a controller, declare a policy in config:
+
+```php
+'sunset_policies' => [
+    '1.0' => [
+        'date' => '2026-06-30',
+        'link' => 'https://docs.example.com/migrating-to-v2',
+        'link_type' => 'text/html',
+        'link_title' => 'Migration guide',
+    ],
+],
+```
+
+```http
+Sunset: Tue, 30 Jun 2026 00:00:00 GMT
+Link: <https://docs.example.com/migrating-to-v2>; rel="sunset"; type="text/html"; title="Migration guide"
+```
+
+A config policy takes precedence over an attribute-resolved sunset date for
+the same version.
 
 ## Versioned Resources
 
@@ -247,6 +347,57 @@ class UserCollection extends VersionedResourceCollection
 }
 ```
 
+## Accessing Version Info
+
+`HasApiVersionAttributes` (see below) covers controllers and resources.
+Anywhere else a `Request` instance is available — form requests, jobs,
+custom middleware, API resources not extending `VersionedJsonResource` —
+use the `Request` macros the middleware registers:
+
+```php
+$request->apiVersion();              // ?string, e.g. '2.0'
+$request->apiVersionInfo();          // ?VersionInfo
+$request->isApiVersionDeprecated();  // bool
+```
+
+These return `null`/`false` until the `api.version` middleware has run for
+the current request.
+
+## Deprecation Telemetry Events
+
+The middleware dispatches two events, so you can measure real usage of a
+version before its sunset date arrives without touching every controller:
+
+```php
+use ShahGhasiAdil\LaravelApiVersioning\Events\ApiVersionResolved;
+use ShahGhasiAdil\LaravelApiVersioning\Events\DeprecatedApiVersionUsed;
+
+// Fired for every successful resolution, including version-neutral routes.
+class LogApiVersionUsage
+{
+    public function handle(ApiVersionResolved $event): void
+    {
+        Log::info('api.version.used', [
+            'version' => $event->versionInfo->version,
+            'path' => $event->request->path(),
+        ]);
+    }
+}
+
+// Fired in addition, only when the resolved version is deprecated.
+class AlertOnDeprecatedVersionUsage
+{
+    public function handle(DeprecatedApiVersionUsed $event): void
+    {
+        Metrics::increment("api.deprecated_version.{$event->versionInfo->version}");
+    }
+}
+```
+
+Both carry the current `Request` and the resolved `VersionInfo` (message,
+sunset date, replacement version). Neither fires when a version can't be
+resolved at all — only successful resolutions are worth measuring.
+
 ## Version Comparison Helpers
 
 In controllers/resources using `HasApiVersionAttributes`:
@@ -274,7 +425,8 @@ $comparator->satisfies('2.1', '^2.0');
 
 ## Error Format (RFC 7807)
 
-Unsupported versions return `application/problem+json`:
+Version problems return `application/problem+json` with a machine-readable
+`code` alongside the human-readable `title`:
 
 ```json
 {
@@ -282,6 +434,7 @@ Unsupported versions return `application/problem+json`:
   "title": "Unsupported API Version",
   "status": 400,
   "detail": "API version '3.0' is not supported for this endpoint.",
+  "code": "UnsupportedApiVersion",
   "requested_version": "3.0",
   "supported_versions": ["1.0", "1.1", "2.0", "2.1"],
   "endpoint_versions": ["2.0", "2.1"]
@@ -289,6 +442,30 @@ Unsupported versions return `application/problem+json`:
 ```
 
 Optional `documentation` is included when `api-versioning.documentation.base_url` is set.
+
+### Detection strictness
+
+By default, version detection is lenient: an unspecified version silently
+falls back to `default_version`, conflicting detection methods silently use
+whichever is listed first in `detection_methods`, and any non-empty string
+is treated as a candidate version. Three independent, opt-in flags under
+`api-versioning.version_detection` tighten this and surface distinct
+problem types instead:
+
+```php
+'version_detection' => [
+    'require_explicit_version' => false,      // true => 400 "Unspecified API Version" instead of assuming default_version
+    'reject_conflicting_versions' => false,   // true => 400 "Ambiguous API Version" instead of first-match-wins
+    'format_validation' => [
+        'enabled' => false,                   // true => 400 "Invalid API Version" for values that don't match 'pattern'
+        'pattern' => '/^\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?$/',
+    ],
+],
+```
+
+Each has its own `code`: `ApiVersionUnspecified`, `AmbiguousApiVersion`
+(with a `conflicts` map of detection method → detected value), and
+`InvalidApiVersion`.
 
 ## Artisan Commands
 
@@ -365,6 +542,19 @@ return [
         ],
     ],
 
+    // See "Detection strictness" above. All disabled by default.
+    'version_detection' => [
+        'require_explicit_version' => false,
+        'reject_conflicting_versions' => false,
+        'format_validation' => [
+            'enabled' => false,
+            'pattern' => '/^\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?$/',
+        ],
+    ],
+
+    // 'neutral' (default) or 'reject'. See "Closure Routes" below.
+    'closure_routes' => 'neutral',
+
     'supported_versions' => ['1.0', '1.1', '2.0', '2.1'],
 
     'version_method_mapping' => [
@@ -381,6 +571,12 @@ return [
 
     'default_method' => 'toArrayDefault',
 
+    // See "Response Headers" above. Both default to true.
+    'reporting' => [
+        'standard_headers' => true,
+        'legacy_headers' => true,
+    ],
+
     'documentation' => [
         'base_url' => env('API_DOCUMENTATION_URL'),
     ],
@@ -391,6 +587,21 @@ return [
     ],
 ];
 ```
+
+### Closure Routes
+
+Routes defined with a `Closure` have no controller class to carry
+`#[ApiVersion]`/`#[Deprecated]` attributes on. By default (`'closure_routes'
+=> 'neutral'`) they behave like `#[ApiVersionNeutral]` and respond to every
+version in `supported_versions`:
+
+```php
+Route::middleware('api.version')->get('/api/ping', fn () => response()->json(['pong' => true]));
+```
+
+Set `'closure_routes' => 'reject'` to restore this package's original
+behavior of returning a 400 "Unsupported API Version" for every request to
+a closure route.
 
 Environment variables:
 

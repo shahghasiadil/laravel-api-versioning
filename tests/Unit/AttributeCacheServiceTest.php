@@ -1,8 +1,12 @@
 <?php
 
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Cache;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeCacheService;
 use ShahGhasiAdil\LaravelApiVersioning\Services\AttributeVersionResolver;
+use ShahGhasiAdil\LaravelApiVersioning\Services\VersionManager;
+use ShahGhasiAdil\LaravelApiVersioning\Tests\Fixtures\Controllers\V1UserController;
+use ShahGhasiAdil\LaravelApiVersioning\ValueObjects\VersionInfo;
 
 afterEach(function () {
     AttributeVersionResolver::resetMemoryCache();
@@ -51,6 +55,61 @@ describe('untagged store (file driver)', function () {
         $cache->flush();
 
         expect($prop->getValue(null))->toBe([]);
+    });
+});
+
+describe('VersionInfo caching', function () {
+    test('resolveVersionForRoute() caches VersionInfo as a plain array, not the object itself', function () {
+        // A prior test may have resolved the same route/version combo
+        // through AttributeVersionResolver's static in-process memory
+        // cache; without resetting it here, resolveVersionForRoute() below
+        // could short-circuit before ever touching the cache store.
+        AttributeVersionResolver::resetMemoryCache();
+
+        config(['cache.default' => 'file']);
+        Cache::clearResolvedInstances();
+        Cache::store('file')->flush();
+
+        $versionManager = new VersionManager([
+            'default_version' => '2.0',
+            'supported_versions' => ['1.0', '1.1', '2.0', '2.1'],
+            'detection_methods' => [
+                'header' => ['enabled' => true, 'header_name' => 'X-API-Version'],
+                'query' => ['enabled' => true, 'parameter_name' => 'api-version'],
+                'path' => ['enabled' => true, 'prefix' => 'api/v'],
+                'media_type' => ['enabled' => false],
+            ],
+        ]);
+        $cache = new AttributeCacheService(enabled: true, ttl: 3600);
+        $resolver = new AttributeVersionResolver($versionManager, $cache);
+
+        $controller = new V1UserController;
+        $route = Mockery::mock(Route::class);
+        $route->shouldReceive('getController')->andReturn($controller);
+        $route->shouldReceive('getActionMethod')->andReturn('index');
+
+        $versionInfo = $resolver->resolveVersionForRoute($route, '1.0');
+        expect($versionInfo)->toBeInstanceOf(VersionInfo::class);
+
+        // 'api_versioning:' mirrors AttributeCacheService::CACHE_PREFIX.
+        $cacheKey = 'api_versioning:'.$cache->generateRouteKey(V1UserController::class, 'index', '1.0');
+        $raw = Cache::store('file')->get($cacheKey);
+
+        // The cache store must never have to unserialize this package's
+        // VersionInfo class -- applications with a hardened unserialize()
+        // class allow-list shouldn't need to know it exists.
+        expect($raw)->toBeArray();
+        expect($raw)->not->toBeInstanceOf(VersionInfo::class);
+        expect($raw['version'])->toBe('1.0');
+
+        // A second, fresh resolution against the same cache entry (a
+        // different PHP process would look like this) must still return a
+        // real, correctly reconstructed VersionInfo.
+        AttributeVersionResolver::resetMemoryCache();
+        $rehydrated = $resolver->resolveVersionForRoute($route, '1.0');
+
+        expect($rehydrated)->toBeInstanceOf(VersionInfo::class);
+        expect($rehydrated->toArray())->toBe($versionInfo->toArray());
     });
 });
 

@@ -51,24 +51,60 @@ class AttributeVersionResolver
 
         $cacheKey = $this->cache->generateRouteKey($controllerClass, $action, $requestedVersion);
 
-        /** @var VersionInfo|null $result */
-        $result = $this->cache->remember($cacheKey, function () use ($controllerClass, $controller, $action, $requestedVersion) {
-            $reflectionClass = new ReflectionClass($controller);
-            $reflectionMethod = $reflectionClass->getMethod($action);
+        // Cached as a plain array, not the VersionInfo object itself, so the
+        // cache store never has to unserialize this package's classes --
+        // applications with a hardened unserialize() allow-list don't need
+        // to know this class exists.
+        /** @var array{version: string, is_neutral: bool, is_deprecated: bool, deprecation_message: string|null, sunset_date: string|null, replaced_by: string|null, route_versions: string[]|null}|null $cached */
+        $cached = $this->cache->remember($cacheKey, function () use ($controllerClass, $controller, $action, $requestedVersion): ?array {
+            return $this->resolveVersionForRouteUncached($controllerClass, $controller, $action, $requestedVersion)?->toArray();
+        });
 
-            // Single pass: check neutral on method and class
-            if ($reflectionMethod->getAttributes(ApiVersionNeutral::class) !== [] ||
-                $reflectionClass->getAttributes(ApiVersionNeutral::class) !== []) {
-                return $this->createVersionInfo(
-                    $requestedVersion,
-                    true,
-                    routeVersions: $this->versionManager->getSupportedVersions()
-                );
-            }
+        $result = $cached !== null ? VersionInfo::fromArray($cached) : null;
 
-            $methodMetadata = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionMethod));
+        self::$memoryCache[$memoryKey] = $result;
 
-            if ($methodMetadata->versions !== [] && in_array($requestedVersion, $methodMetadata->versions, true)) {
+        return $result;
+    }
+
+    /**
+     * @param  class-string  $controllerClass
+     */
+    private function resolveVersionForRouteUncached(string $controllerClass, object $controller, string $action, string $requestedVersion): ?VersionInfo
+    {
+        $reflectionClass = new ReflectionClass($controller);
+        $reflectionMethod = $reflectionClass->getMethod($action);
+
+        // Single pass: check neutral on method and class
+        if ($reflectionMethod->getAttributes(ApiVersionNeutral::class) !== [] ||
+            $reflectionClass->getAttributes(ApiVersionNeutral::class) !== []) {
+            return $this->createVersionInfo(
+                $requestedVersion,
+                true,
+                routeVersions: $this->versionManager->getSupportedVersions()
+            );
+        }
+
+        $methodMetadata = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionMethod));
+
+        if ($methodMetadata->versions !== [] && in_array($requestedVersion, $methodMetadata->versions, true)) {
+            $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
+
+            return $this->createVersionInfo(
+                $requestedVersion,
+                false,
+                $reflectionMethod,
+                $reflectionClass,
+                routeVersions: array_values(array_unique([...$methodMetadata->versions, ...$advertised])),
+                perVersionDeprecation: $methodMetadata->deprecated,
+            );
+        }
+
+        // Only look at class-level if method had no version attributes
+        if ($methodMetadata->versions === []) {
+            $classMetadata = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass));
+
+            if ($classMetadata->versions !== [] && in_array($requestedVersion, $classMetadata->versions, true)) {
                 $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
 
                 return $this->createVersionInfo(
@@ -76,45 +112,23 @@ class AttributeVersionResolver
                     false,
                     $reflectionMethod,
                     $reflectionClass,
-                    routeVersions: array_values(array_unique([...$methodMetadata->versions, ...$advertised])),
-                    perVersionDeprecation: $methodMetadata->deprecated,
+                    routeVersions: array_values(array_unique([...$classMetadata->versions, ...$advertised])),
+                    perVersionDeprecation: $classMetadata->deprecated,
                 );
             }
 
-            // Only look at class-level if method had no version attributes
-            if ($methodMetadata->versions === []) {
-                $classMetadata = $this->collectVersionMetadata($this->implementedVersionAttributes($reflectionClass));
-
-                if ($classMetadata->versions !== [] && in_array($requestedVersion, $classMetadata->versions, true)) {
-                    $advertised = $this->collectAdvertisedMetadata($reflectionMethod, $reflectionClass)->versions;
-
-                    return $this->createVersionInfo(
-                        $requestedVersion,
-                        false,
-                        $reflectionMethod,
-                        $reflectionClass,
-                        routeVersions: array_values(array_unique([...$classMetadata->versions, ...$advertised])),
-                        perVersionDeprecation: $classMetadata->deprecated,
-                    );
-                }
-
-                // No attributes on either method or class at all: fall back
-                // to conventions registered via ApiVersioning::conventions().
-                // Attributes always win when present, even partially (a
-                // non-matching version on an attributed class/method is
-                // still an attribute "claiming" that class/method) -- this
-                // branch is only reached when there were none whatsoever.
-                if ($classMetadata->versions === []) {
-                    return $this->resolveFromConventions($controllerClass, $action, $requestedVersion);
-                }
+            // No attributes on either method or class at all: fall back
+            // to conventions registered via ApiVersioning::conventions().
+            // Attributes always win when present, even partially (a
+            // non-matching version on an attributed class/method is
+            // still an attribute "claiming" that class/method) -- this
+            // branch is only reached when there were none whatsoever.
+            if ($classMetadata->versions === []) {
+                return $this->resolveFromConventions($controllerClass, $action, $requestedVersion);
             }
+        }
 
-            return null;
-        });
-
-        self::$memoryCache[$memoryKey] = $result;
-
-        return $result;
+        return null;
     }
 
     /**
